@@ -124,30 +124,33 @@ class MTEncDecModel(EncDecNLPModel):
             pre_ln=cfg.decoder.pre_ln,
         )
 
-        self.log_softmax = TokenClassifier(
-            hidden_size=self.decoder.hidden_size,
-            num_classes=self.decoder_vocab_size,
-            activation=cfg.head.activation,
-            log_softmax=cfg.head.log_softmax,
-            dropout=cfg.head.dropout,
-            use_transformer_init=cfg.head.use_transformer_init,
-        )
+        # if using emim embedder will replace functionalities below
+        self.is_emim = (cfg.encoder_tokenizer.tokenizer_name == "emim")
+        if not self.is_emim:
+            self.log_softmax = TokenClassifier(
+                hidden_size=self.decoder.hidden_size,
+                num_classes=self.decoder_vocab_size,
+                activation=cfg.head.activation,
+                log_softmax=cfg.head.log_softmax,
+                dropout=cfg.head.dropout,
+                use_transformer_init=cfg.head.use_transformer_init,
+            )
 
-        self.beam_search = BeamSearchSequenceGenerator(
-            embedding=self.decoder.embedding,
-            decoder=self.decoder.decoder,
-            log_softmax=self.log_softmax,
-            max_sequence_length=self.decoder.max_sequence_length,
-            beam_size=cfg.beam_size,
-            bos=self.decoder_tokenizer.bos_id,
-            pad=self.decoder_tokenizer.pad_id,
-            eos=self.decoder_tokenizer.eos_id,
-            len_pen=cfg.len_pen,
-            max_delta_length=cfg.max_generation_delta,
-        )
+            self.beam_search = BeamSearchSequenceGenerator(
+                embedding=self.decoder.embedding,
+                decoder=self.decoder.decoder,
+                log_softmax=self.log_softmax,
+                max_sequence_length=self.decoder.max_sequence_length,
+                beam_size=cfg.beam_size,
+                bos=self.decoder_tokenizer.bos_id,
+                pad=self.decoder_tokenizer.pad_id,
+                eos=self.decoder_tokenizer.eos_id,
+                len_pen=cfg.len_pen,
+                max_delta_length=cfg.max_generation_delta,
+            )
 
-        # tie weights of embedding and softmax matrices
-        self.log_softmax.mlp.layer0.weight = self.decoder.embedding.token_embedding.weight
+            # tie weights of embedding and softmax matrices
+            self.log_softmax.mlp.layer0.weight = self.decoder.embedding.token_embedding.weight
 
         # TODO: encoder and decoder with different hidden size?
         std_init_range = 1 / self.encoder.hidden_size ** 0.5
@@ -166,7 +169,11 @@ class MTEncDecModel(EncDecNLPModel):
     def forward(self, src, src_mask, tgt, tgt_mask):
         src_hiddens = self.encoder(src, src_mask)
         tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
-        log_probs = self.log_softmax(hidden_states=tgt_hiddens)
+        if self.is_emim:
+            log_probs = self.embedder.log_softmax(hidden_states=tgt_hiddens)
+        else:
+            log_probs = self.log_softmax(hidden_states=tgt_hiddens)
+
         return log_probs
 
     def training_step(self, batch, batch_idx):
@@ -361,21 +368,25 @@ class MTEncDecModel(EncDecNLPModel):
     def batch_translate(
         self, src: torch.LongTensor, src_mask: torch.LongTensor,
     ):
-        """	
-        Translates a minibatch of inputs from source language to target language.	
-        Args:	
-            src: minibatch of inputs in the src language (batch x seq_len)	
-            src_mask: mask tensor indicating elements to be ignored (batch x seq_len)	
-        Returns:	
-            translations: a list strings containing detokenized translations	
-            inputs: a list of string containing detokenized inputs	
+        """
+        Translates a minibatch of inputs from source language to target language.
+        Args:
+            src: minibatch of inputs in the src language (batch x seq_len)
+            src_mask: mask tensor indicating elements to be ignored (batch x seq_len)
+        Returns:
+            translations: a list strings containing detokenized translations
+            inputs: a list of string containing detokenized inputs
         """
         mode = self.training
         try:
             self.eval()
 
             src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
-            beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+            if not self.is_emim:
+                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+            else:
+                # TODO: replace beam_search with emim
+
             beam_results = self.filter_predicted_ids(beam_results)
 
             translations = [self.decoder_tokenizer.ids_to_text(tr) for tr in beam_results.cpu().numpy()]
