@@ -21,7 +21,7 @@ from nemo.collections.common.tokenizers import TokenizerSpec
 __all__ = ['YouTokenToMeTokenizer']
 
 
-class SentenceMIMTokenizer(TokenizerSpec):
+class EmbeddingMIMTokenizer(TokenizerSpec):
     """
     A wrapper around a SentenceMIM Embedder.
     """

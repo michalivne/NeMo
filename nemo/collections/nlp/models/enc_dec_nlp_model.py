@@ -91,16 +91,29 @@ class EncDecNLPModel(NLPModel):
         decoder_bpe_dropout=0.0,
     ):
 
-        if encoder_tokenizer_name != 'yttm' or decoder_tokenizer_name != 'yttm':
-            raise NotImplementedError(f"Currently we only support yttm tokenizer.")
+        if encoder_tokenizer_name != decoder_tokenizer_name:
+            raise NotImplementedError(f"Currently we only support encoder and decoder tokenizers which are the same type.")
 
-        self.encoder_tokenizer = get_tokenizer(
-            tokenizer_name=encoder_tokenizer_name,
-            tokenizer_model=self.register_artifact("cfg.encoder_tokenizer.tokenizer_model", encoder_tokenizer_model),
-            bpe_dropout=encoder_bpe_dropout,
-        )
-        self.decoder_tokenizer = get_tokenizer(
-            tokenizer_name=decoder_tokenizer_name,
-            tokenizer_model=self.register_artifact("cfg.decoder_tokenizer.tokenizer_model", decoder_tokenizer_model),
-            bpe_dropout=decoder_bpe_dropout,
-        )
+        if encoder_tokenizer_name == 'yttm':
+            self.encoder_tokenizer = get_tokenizer(
+                tokenizer_name=encoder_tokenizer_name,
+                tokenizer_model=self.register_artifact("cfg.encoder_tokenizer.tokenizer_model", encoder_tokenizer_model),
+                bpe_dropout=encoder_bpe_dropout,
+            )
+            self.decoder_tokenizer = get_tokenizer(
+                tokenizer_name=decoder_tokenizer_name,
+                tokenizer_model=self.register_artifact("cfg.decoder_tokenizer.tokenizer_model", decoder_tokenizer_model),
+                bpe_dropout=decoder_bpe_dropout,
+            )
+        elif encoder_tokenizer_name == 'emim':
+            if encoder_tokenizer_model != decoder_tokenizer_model:
+                raise ValueError("Expecting encoder_tokenizer_model == decoder_tokenizer_model but they are different")
+
+            # load embedder
+            self.embedder = torch.load(self.register_artifact("cfg.decoder_tokenizer.tokenizer_model", decoder_tokenizer_model))
+
+            # register tokenizer around embedder
+            from nemo.collections.common.tokenizers.emim_tokenizer import EmbeddingMIMTokenizer
+            self.encoder_tokenizer = self.decoder_tokenizer = EmbeddingMIMTokenizer(self.embedder)
+        else:
+            raise NotImplementedError(f"Currently we only support yttm and emim tokenizers.")
