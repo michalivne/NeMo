@@ -18,16 +18,16 @@ import youtokentome as yttm
 
 from nemo.collections.common.tokenizers import TokenizerSpec
 
-__all__ = ['YouTokenToMeTokenizer']
+__all__ = ['EmbeddingMIMTokenizer']
 
 
 class EmbeddingMIMTokenizer(TokenizerSpec):
     """
-    A wrapper around a SentenceMIM Embedder.
+    A wrapper around a character-level word SentenceMIM (i.e., EmbeddingMIM).
     """
-    def __init__(self, embedder):
-        self.embedder = embedder
-        self.vocab_size = self.embedder.size
+    def __init__(self, smim):
+        self.smim = smim
+        self.vocab_size = self.smim.size
         self.special_tokens = self.tokens_to_ids(["<PAD>", "<UNK>", "<BOS>", "<EOS>"])
 
     def text_to_tokens(self, text):
@@ -37,11 +37,11 @@ class EmbeddingMIMTokenizer(TokenizerSpec):
         raise NotImplementedError("Not supported in this class")
 
     def text_to_ids(self, text):
-        return return self.embedder.encode(text)
+        return return self.smim.encode(text)
 
     def ids_to_text(self, ids):
         ids_ = [id_ for id_ in ids if id_ not in self.special_tokens]
-        return self.embedder.decode(ids_)
+        return self.smim.decode(ids_)
 
     def tokens_to_ids(self, tokens):
         raise NotImplementedError("Not supported in this class")
@@ -51,16 +51,16 @@ class EmbeddingMIMTokenizer(TokenizerSpec):
 
     @property
     def pad_id(self):
-        return self.embedder.voc.pad_idx
+        return self.smim.voc.pad_idx
 
     @property
     def bos_id(self):
-        return self.embedder.voc.bot_idx
+        return self.smim.voc.bot_idx
 
     @property
     def eos_id(self):
-        return self.embedder.voc.eot_idx
+        return self.smim.voc.eot_idx
 
     @property
     def unk_id(self):
-        return self.embedder.voc.unk_idx
+        return self.smim.voc.unk_idx

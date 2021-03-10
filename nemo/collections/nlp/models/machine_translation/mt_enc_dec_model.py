@@ -41,8 +41,25 @@ from nemo.collections.nlp.modules.common.transformer.transformer import Transfor
 from nemo.core.classes.common import typecheck
 from nemo.utils import logging, model_utils
 
+# quick and dirty eMIM import
+from nemo.collections.common.tokenizers.emim_tokenizer import EmbeddingMIMTokenizer
+
+
 __all__ = ['MTEncDecModel']
 
+class MIMEmbedder(torch.nn.Module):
+    """
+    A wrapper around character level sMIM
+    """
+    def __init__(self, smim):
+        super().__init__()
+        self.smim = smim
+
+
+    def forward(self, x):
+        """
+        Returns embeddings of a sentence
+        """
 
 class MTEncDecModel(EncDecNLPModel):
     """
@@ -63,17 +80,25 @@ class MTEncDecModel(EncDecNLPModel):
         self.src_language: str = cfg.get("src_language", None)
         self.tgt_language: str = cfg.get("tgt_language", None)
 
-        # Instantiates tokenizers and register to be saved with NeMo Model archive
-        # After this call, ther will be self.encoder_tokenizer and self.decoder_tokenizer
-        # Which can convert between tokens and token_ids for SRC and TGT languages correspondingly.
-        self.setup_enc_dec_tokenizers(
-            encoder_tokenizer_name=cfg.encoder_tokenizer.tokenizer_name,
-            encoder_tokenizer_model=cfg.encoder_tokenizer.tokenizer_model,
-            encoder_bpe_dropout=cfg.encoder_tokenizer.get('bpe_dropout', 0.0),
-            decoder_tokenizer_name=cfg.decoder_tokenizer.tokenizer_name,
-            decoder_tokenizer_model=cfg.decoder_tokenizer.tokenizer_model,
-            decoder_bpe_dropout=cfg.decoder_tokenizer.get('bpe_dropout', 0.0),
-        )
+        # easy access to check if using eMIM
+        self.is_emim = (cfg.encoder_tokenizer.tokenizer_name == "emim")
+
+        if not self.is_emim:
+            # Instantiates tokenizers and register to be saved with NeMo Model archive
+            # After this call, ther will be self.encoder_tokenizer and self.decoder_tokenizer
+            # Which can convert between tokens and token_ids for SRC and TGT languages correspondingly.
+            self.setup_enc_dec_tokenizers(
+                encoder_tokenizer_name=cfg.encoder_tokenizer.tokenizer_name,
+                encoder_tokenizer_model=cfg.encoder_tokenizer.tokenizer_model,
+                encoder_bpe_dropout=cfg.encoder_tokenizer.get('bpe_dropout', 0.0),
+                decoder_tokenizer_name=cfg.decoder_tokenizer.tokenizer_name,
+                decoder_tokenizer_model=cfg.decoder_tokenizer.tokenizer_model,
+                decoder_bpe_dropout=cfg.decoder_tokenizer.get('bpe_dropout', 0.0),
+            )
+        else:
+            self.smim = torch.load(self.register_artifact("cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_mode))
+            self.encoder_tokenizer = self.decoder_tokenizer = EmbeddingMIMTokenizer(self.smim)
+
 
         # After this call, the model will have  self.source_processor and self.target_processor objects
         self.setup_pre_and_post_processing_utils(source_lang=self.src_language, target_lang=self.tgt_language)
@@ -83,7 +108,7 @@ class MTEncDecModel(EncDecNLPModel):
 
         # TODO: use get_encoder function with support for HF and Megatron
         self.encoder = TransformerEncoderNM(
-            vocab_size=self.encoder_vocab_size,
+            vocab_size=1 if self.is_emim else self.encoder_vocab_size,
             hidden_size=cfg.encoder.hidden_size,
             num_layers=cfg.encoder.num_layers,
             inner_size=cfg.encoder.inner_size,
@@ -105,7 +130,7 @@ class MTEncDecModel(EncDecNLPModel):
 
         # TODO: user get_decoder function with support for HF and Megatron
         self.decoder = TransformerDecoderNM(
-            vocab_size=self.decoder_vocab_size,
+            vocab_size=1 if self.is_emim else self.decoder_vocab_size,
             hidden_size=cfg.decoder.hidden_size,
             num_layers=cfg.decoder.num_layers,
             inner_size=cfg.decoder.inner_size,
@@ -124,8 +149,6 @@ class MTEncDecModel(EncDecNLPModel):
             pre_ln=cfg.decoder.pre_ln,
         )
 
-        # if using emim embedder will replace functionalities below
-        self.is_emim = (cfg.encoder_tokenizer.tokenizer_name == "emim")
         if not self.is_emim:
             self.log_softmax = TokenClassifier(
                 hidden_size=self.decoder.hidden_size,
@@ -151,6 +174,10 @@ class MTEncDecModel(EncDecNLPModel):
 
             # tie weights of embedding and softmax matrices
             self.log_softmax.mlp.layer0.weight = self.decoder.embedding.token_embedding.weight
+        else:
+            # TODO: replace with eMIM
+            self.decoder._embedding
+            self.decoder._embedding
 
         # TODO: encoder and decoder with different hidden size?
         std_init_range = 1 / self.encoder.hidden_size ** 0.5
