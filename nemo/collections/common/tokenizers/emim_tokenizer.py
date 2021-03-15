@@ -37,7 +37,7 @@ class EmbeddingMIMTokenizer(TokenizerSpec):
         raise NotImplementedError("Not supported in this class")
 
     def text_to_ids(self, text):
-        return return self.smim.encode(text)
+        return self.smim.encode(text)
 
     def ids_to_text(self, ids):
         ids_ = [id_ for id_ in ids if id_ not in self.special_tokens]
