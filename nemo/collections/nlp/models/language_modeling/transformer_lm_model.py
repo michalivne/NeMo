@@ -39,11 +39,12 @@ class TransformerLMModel(ModelPT):
     """
 
     def __init__(self, cfg: DictConfig, trainer: Trainer = None):
-        # init superclass
-        super().__init__(cfg=cfg, trainer=trainer)
 
         # Get global rank and total number of GPU workers for IterableDataset partitioning, if applicable
         import pudb; pudb.set_trace()
+        if trainer is not None:
+            self.trainer = trainer
+
         self.global_rank = 0
         self.world_size = 1
         if trainer is not None:
@@ -79,7 +80,7 @@ class TransformerLMModel(ModelPT):
         vocab_size = 8 * math.ceil(self.tokenizer.vocab_size / 8)
 
         # init superclass
-        # super().__init__(cfg=cfg, trainer=trainer)
+        super().__init__(cfg=cfg, trainer=trainer)
 
         self.embedding_layer = TransformerEmbedding(
             vocab_size=vocab_size,
