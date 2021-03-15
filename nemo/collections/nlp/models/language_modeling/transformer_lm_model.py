@@ -42,14 +42,14 @@ class TransformerLMModel(ModelPT):
 
         # Get global rank and total number of GPU workers for IterableDataset partitioning, if applicable
         import pudb; pudb.set_trace()
-        if trainer is not None:
-            self.trainer = trainer
+        # if trainer is not None:
+        #     self.trainer = trainer
 
-        self.global_rank = 0
-        self.world_size = 1
-        if trainer is not None:
-            self.global_rank = (trainer.node_rank * trainer.num_gpus) + trainer.local_rank
-            self.world_size = trainer.num_nodes * trainer.num_gpus
+        # self.global_rank = 0
+        # self.world_size = 1
+        # if trainer is not None:
+        #     self.global_rank = (trainer.node_rank * trainer.num_gpus) + trainer.local_rank
+        #     self.world_size = trainer.num_nodes * trainer.num_gpus
 
         # shared params for dataset and data loaders
         self.dataset_cfg = cfg.dataset
