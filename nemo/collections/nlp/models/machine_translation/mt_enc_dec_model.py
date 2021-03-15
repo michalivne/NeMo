@@ -444,6 +444,7 @@ class MTEncDecModel(EncDecNLPModel):
                     encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
             else:
                 # TODO: replace beam_search with emim
+                pass
 
             beam_results = self.filter_predicted_ids(beam_results)
 
