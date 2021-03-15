@@ -47,19 +47,21 @@ from nemo.collections.common.tokenizers.emim_tokenizer import EmbeddingMIMTokeni
 
 __all__ = ['MTEncDecModel']
 
+
 class MIMEmbedder(torch.nn.Module):
     """
     A wrapper around character level sMIM
     """
+
     def __init__(self, smim):
         super().__init__()
         self.smim = smim
-
 
     def forward(self, x):
         """
         Returns embeddings of a sentence
         """
+
 
 class MTEncDecModel(EncDecNLPModel):
     """
@@ -90,18 +92,22 @@ class MTEncDecModel(EncDecNLPModel):
             self.setup_enc_dec_tokenizers(
                 encoder_tokenizer_name=cfg.encoder_tokenizer.tokenizer_name,
                 encoder_tokenizer_model=cfg.encoder_tokenizer.tokenizer_model,
-                encoder_bpe_dropout=cfg.encoder_tokenizer.get('bpe_dropout', 0.0),
+                encoder_bpe_dropout=cfg.encoder_tokenizer.get(
+                    'bpe_dropout', 0.0),
                 decoder_tokenizer_name=cfg.decoder_tokenizer.tokenizer_name,
                 decoder_tokenizer_model=cfg.decoder_tokenizer.tokenizer_model,
-                decoder_bpe_dropout=cfg.decoder_tokenizer.get('bpe_dropout', 0.0),
+                decoder_bpe_dropout=cfg.decoder_tokenizer.get(
+                    'bpe_dropout', 0.0),
             )
         else:
-            self.smim = torch.load(self.register_artifact("cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_mode))
-            self.encoder_tokenizer = self.decoder_tokenizer = EmbeddingMIMTokenizer(self.smim)
-
+            self.smim = torch.load(self.register_artifact(
+                "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_mode))
+            self.encoder_tokenizer = self.decoder_tokenizer = EmbeddingMIMTokenizer(
+                self.smim)
 
         # After this call, the model will have  self.source_processor and self.target_processor objects
-        self.setup_pre_and_post_processing_utils(source_lang=self.src_language, target_lang=self.tgt_language)
+        self.setup_pre_and_post_processing_utils(
+            source_lang=self.src_language, target_lang=self.tgt_language)
 
         # TODO: Why is this base constructor call so late in the game?
         super().__init__(cfg=cfg, trainer=trainer)
@@ -115,7 +121,8 @@ class MTEncDecModel(EncDecNLPModel):
             max_sequence_length=cfg.encoder.max_sequence_length
             if hasattr(cfg.encoder, 'max_sequence_length')
             else 512,
-            embedding_dropout=cfg.encoder.embedding_dropout if hasattr(cfg.encoder, 'embedding_dropout') else 0.0,
+            embedding_dropout=cfg.encoder.embedding_dropout if hasattr(
+                cfg.encoder, 'embedding_dropout') else 0.0,
             learn_positional_encodings=cfg.encoder.learn_positional_encodings
             if hasattr(cfg.encoder, 'learn_positional_encodings')
             else False,
@@ -137,7 +144,8 @@ class MTEncDecModel(EncDecNLPModel):
             max_sequence_length=cfg.decoder.max_sequence_length
             if hasattr(cfg.decoder, 'max_sequence_length')
             else 512,
-            embedding_dropout=cfg.decoder.embedding_dropout if hasattr(cfg.decoder, 'embedding_dropout') else 0.0,
+            embedding_dropout=cfg.decoder.embedding_dropout if hasattr(
+                cfg.decoder, 'embedding_dropout') else 0.0,
             learn_positional_encodings=cfg.decoder.learn_positional_encodings
             if hasattr(cfg.decoder, 'learn_positional_encodings')
             else False,
@@ -181,12 +189,14 @@ class MTEncDecModel(EncDecNLPModel):
 
         # TODO: encoder and decoder with different hidden size?
         std_init_range = 1 / self.encoder.hidden_size ** 0.5
-        self.apply(lambda module: transformer_weights_init(module, std_init_range))
+        self.apply(lambda module: transformer_weights_init(
+            module, std_init_range))
 
         self.loss_fn = SmoothedCrossEntropyLoss(
             pad_id=self.decoder_tokenizer.pad_id, label_smoothing=cfg.label_smoothing
         )
-        self.eval_loss = GlobalAverageLossMetric(dist_sync_on_step=False, take_avg_loss=True)
+        self.eval_loss = GlobalAverageLossMetric(
+            dist_sync_on_step=False, take_avg_loss=True)
 
     def filter_predicted_ids(self, ids):
         ids[ids >= self.decoder_tokenizer.vocab_size] = self.decoder_tokenizer.unk_id
@@ -235,11 +245,15 @@ class MTEncDecModel(EncDecNLPModel):
         # this will run encoder twice -- TODO: potentially fix
         _, translations = self.batch_translate(src=src_ids, src_mask=src_mask)
         eval_loss = self.loss_fn(log_probs=log_probs, labels=labels)
-        self.eval_loss(loss=eval_loss, num_measurements=log_probs.shape[0] * log_probs.shape[1])
+        self.eval_loss(
+            loss=eval_loss, num_measurements=log_probs.shape[0] * log_probs.shape[1])
         np_tgt = tgt_ids.cpu().numpy()
-        ground_truths = [self.decoder_tokenizer.ids_to_text(tgt) for tgt in np_tgt]
-        ground_truths = [self.target_processor.detokenize(tgt.split(' ')) for tgt in ground_truths]
-        num_non_pad_tokens = np.not_equal(np_tgt, self.decoder_tokenizer.pad_id).sum().item()
+        ground_truths = [
+            self.decoder_tokenizer.ids_to_text(tgt) for tgt in np_tgt]
+        ground_truths = [self.target_processor.detokenize(
+            tgt.split(' ')) for tgt in ground_truths]
+        num_non_pad_tokens = np.not_equal(
+            np_tgt, self.decoder_tokenizer.pad_id).sum().item()
         return {
             'translations': translations,
             'ground_truths': ground_truths,
@@ -253,10 +267,12 @@ class MTEncDecModel(EncDecNLPModel):
     def log_param_stats(self):
         for name, p in self.named_parameters():
             if p.requires_grad:
-                self.trainer.logger.experiment.add_histogram(name + '_hist', p, global_step=self.global_step)
+                self.trainer.logger.experiment.add_histogram(
+                    name + '_hist', p, global_step=self.global_step)
                 self.trainer.logger.experiment.add_scalars(
                     name,
-                    {'mean': p.mean(), 'stddev': p.std(), 'max': p.max(), 'min': p.min()},
+                    {'mean': p.mean(), 'stddev': p.std(),
+                     'max': p.max(), 'min': p.min()},
                     global_step=self.global_step,
                 )
 
@@ -269,16 +285,21 @@ class MTEncDecModel(EncDecNLPModel):
 
     def eval_epoch_end(self, outputs, mode):
         eval_loss = self.eval_loss.compute()
-        translations = list(itertools.chain(*[x['translations'] for x in outputs]))
-        ground_truths = list(itertools.chain(*[x['ground_truths'] for x in outputs]))
+        translations = list(itertools.chain(
+            *[x['translations'] for x in outputs]))
+        ground_truths = list(itertools.chain(
+            *[x['ground_truths'] for x in outputs]))
 
         assert len(translations) == len(ground_truths)
         if self.tgt_language in ['ja']:
-            sacre_bleu = corpus_bleu(translations, [ground_truths], tokenize="ja-mecab")
+            sacre_bleu = corpus_bleu(
+                translations, [ground_truths], tokenize="ja-mecab")
         elif self.tgt_language in ['zh']:
-            sacre_bleu = corpus_bleu(translations, [ground_truths], tokenize="zh")
+            sacre_bleu = corpus_bleu(
+                translations, [ground_truths], tokenize="zh")
         else:
-            sacre_bleu = corpus_bleu(translations, [ground_truths], tokenize="13a")
+            sacre_bleu = corpus_bleu(
+                translations, [ground_truths], tokenize="13a")
 
         dataset_name = "Validation" if mode == 'val' else "Test"
         logging.info(f"\n\n\n\n{dataset_name} set size: {len(translations)}")
@@ -305,27 +326,34 @@ class MTEncDecModel(EncDecNLPModel):
         return self.eval_epoch_end(outputs, 'test')
 
     def setup_training_data(self, train_data_config: Optional[DictConfig]):
-        self._train_dl = self._setup_dataloader_from_config(cfg=train_data_config)
+        self._train_dl = self._setup_dataloader_from_config(
+            cfg=train_data_config)
 
     def setup_validation_data(self, val_data_config: Optional[DictConfig]):
-        self._validation_dl = self._setup_dataloader_from_config(cfg=val_data_config)
+        self._validation_dl = self._setup_dataloader_from_config(
+            cfg=val_data_config)
 
     def setup_test_data(self, test_data_config: Optional[DictConfig]):
-        self._test_dl = self._setup_dataloader_from_config(cfg=test_data_config)
+        self._test_dl = self._setup_dataloader_from_config(
+            cfg=test_data_config)
 
     def _setup_dataloader_from_config(self, cfg: DictConfig):
         if cfg.get("load_from_cached_dataset", False):
-            logging.info('Loading from cached dataset %s' % (cfg.src_file_name))
+            logging.info('Loading from cached dataset %s' %
+                         (cfg.src_file_name))
             if cfg.src_file_name != cfg.tgt_file_name:
-                raise ValueError("src must be equal to target for cached dataset")
+                raise ValueError(
+                    "src must be equal to target for cached dataset")
             dataset = pickle.load(open(cfg.src_file_name, 'rb'))
-            dataset.reverse_lang_direction = cfg.get("reverse_lang_direction", False)
+            dataset.reverse_lang_direction = cfg.get(
+                "reverse_lang_direction", False)
         elif cfg.get("use_tarred_dataset", False):
             if cfg.get('tar_files') is None:
                 raise FileNotFoundError("Could not find tarred dataset.")
             logging.info(f'Loading from tarred dataset {cfg.get("tar_files")}')
             if cfg.get("metadata_file", None) is None:
-                raise FileNotFoundError("Could not find metadata path in config")
+                raise FileNotFoundError(
+                    "Could not find metadata path in config")
             dataset = TarredTranslationDataset(
                 text_tar_filepaths=cfg.tar_files,
                 metadata_path=cfg.metadata_file,
@@ -335,7 +363,8 @@ class MTEncDecModel(EncDecNLPModel):
                 shard_strategy=cfg.get("shard_strategy", "scatter"),
                 global_rank=self.global_rank,
                 world_size=self.world_size,
-                reverse_lang_direction=cfg.get("reverse_lang_direction", False),
+                reverse_lang_direction=cfg.get(
+                    "reverse_lang_direction", False),
             )
             return torch.utils.data.DataLoader(
                 dataset=dataset,
@@ -357,7 +386,8 @@ class MTEncDecModel(EncDecNLPModel):
                 cache_ids=cfg.get("cache_ids", False),
                 cache_data_per_node=cfg.get("cache_data_per_node", False),
                 use_cache=cfg.get("use_cache", False),
-                reverse_lang_direction=cfg.get("reverse_lang_direction", False),
+                reverse_lang_direction=cfg.get(
+                    "reverse_lang_direction", False),
             )
             dataset.batchify(self.encoder_tokenizer, self.decoder_tokenizer)
         if cfg.shuffle:
@@ -410,21 +440,25 @@ class MTEncDecModel(EncDecNLPModel):
 
             src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
             if not self.is_emim:
-                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+                beam_results = self.beam_search(
+                    encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
             else:
                 # TODO: replace beam_search with emim
 
             beam_results = self.filter_predicted_ids(beam_results)
 
-            translations = [self.decoder_tokenizer.ids_to_text(tr) for tr in beam_results.cpu().numpy()]
-            inputs = [self.encoder_tokenizer.ids_to_text(inp) for inp in src.cpu().numpy()]
+            translations = [self.decoder_tokenizer.ids_to_text(
+                tr) for tr in beam_results.cpu().numpy()]
+            inputs = [self.encoder_tokenizer.ids_to_text(
+                inp) for inp in src.cpu().numpy()]
             if self.target_processor is not None:
                 translations = [
                     self.target_processor.detokenize(translation.split(' ')) for translation in translations
                 ]
 
             if self.source_processor is not None:
-                inputs = [self.source_processor.detokenize(item.split(' ')) for item in inputs]
+                inputs = [self.source_processor.detokenize(
+                    item.split(' ')) for item in inputs]
 
         finally:
             self.train(mode=mode)
@@ -456,14 +490,17 @@ class MTEncDecModel(EncDecNLPModel):
                     txt = self.source_processor.normalize(txt)
                     txt = self.source_processor.tokenize(txt)
                 ids = self.encoder_tokenizer.text_to_ids(txt)
-                ids = [self.encoder_tokenizer.bos_id] + ids + [self.encoder_tokenizer.eos_id]
+                ids = [self.encoder_tokenizer.bos_id] + \
+                    ids + [self.encoder_tokenizer.eos_id]
                 inputs.append(ids)
             max_len = max(len(txt) for txt in inputs)
-            src_ids_ = np.ones((len(inputs), max_len)) * self.encoder_tokenizer.pad_id
+            src_ids_ = np.ones((len(inputs), max_len)) * \
+                self.encoder_tokenizer.pad_id
             for i, txt in enumerate(inputs):
                 src_ids_[i][: len(txt)] = txt
 
-            src_mask = torch.FloatTensor((src_ids_ != self.encoder_tokenizer.pad_id)).to(self.device)
+            src_mask = torch.FloatTensor(
+                (src_ids_ != self.encoder_tokenizer.pad_id)).to(self.device)
             src = torch.LongTensor(src_ids_).to(self.device)
             _, translations = self.batch_translate(src, src_mask)
         finally:
