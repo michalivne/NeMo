@@ -41,6 +41,7 @@ class TransformerLMModel(ModelPT):
     def __init__(self, cfg: DictConfig, trainer: Trainer = None):
 
         # Get global rank and total number of GPU workers for IterableDataset partitioning, if applicable
+        import pudb; pudb.set_trace()
         self.global_rank = 0
         self.world_size = 1
         if trainer is not None:
