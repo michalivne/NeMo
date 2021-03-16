@@ -97,6 +97,7 @@ class TranslationDataset(Dataset):
             )
 
     def batchify(self, tokenizer_src, tokenizer_tgt):
+        # TODO: return identity
         src_ids = dataset_to_ids(
             self.dataset_src,
             tokenizer_src,
@@ -123,6 +124,7 @@ class TranslationDataset(Dataset):
         self.src_pad_id = tokenizer_src.pad_id
         self.tgt_pad_id = tokenizer_tgt.pad_id
 
+        # TODO: not compatible with strings
         self.batch_indices = self.pack_data_into_batches(src_ids, tgt_ids)
         self.batches = self.pad_batches(src_ids, tgt_ids, self.batch_indices)
 
@@ -130,6 +132,7 @@ class TranslationDataset(Dataset):
         return len(self.batches)
 
     def __getitem__(self, idx):
+        # FIXME: treat as float
         src_ids = self.batches[idx]["src"]
         tgt = self.batches[idx]["tgt"]
         if self.reverse_lang_direction:
@@ -165,6 +168,7 @@ class TranslationDataset(Dataset):
         batches where each batch contains indices of sentences included into it
         """
 
+        # FIXME: disable for now
         # create buckets sorted by the number of src tokens
         # each bucket is also sorted by the number of tgt tokens
         buckets = {}

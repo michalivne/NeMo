@@ -83,7 +83,7 @@ class MTEncDecModel(EncDecNLPModel):
         self.tgt_language: str = cfg.get("tgt_language", None)
 
         # easy access to check if using eMIM
-        self.is_emim = (cfg.encoder_tokenizer.tokenizer_name == "emim")
+        self.is_emim = (cfg.encoder_tokenizer.tokenizer_name == "emim") or (cfg.decoder_tokenizer.tokenizer_name == "emim")
 
         if not self.is_emim:
             # Instantiates tokenizers and register to be saved with NeMo Model archive
@@ -100,6 +100,8 @@ class MTEncDecModel(EncDecNLPModel):
                     'bpe_dropout', 0.0),
             )
         else:
+            if (cfg.encoder_tokenizer.tokenizer_name != cfg.decoder_tokenizer.tokenizer_name):
+                raise ValueError("encoder_tokenizer != decoder_tokenizer which is not allowed for eMIM")
             self.smim = torch.load(self.register_artifact(
                 "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_mode))
             self.encoder_tokenizer = self.decoder_tokenizer = EmbeddingMIMTokenizer(
@@ -204,6 +206,9 @@ class MTEncDecModel(EncDecNLPModel):
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
+        if self.emim:
+            import pudb; pudb.set_trace()
+
         src_hiddens = self.encoder(src, src_mask)
         tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
         if self.is_emim:
