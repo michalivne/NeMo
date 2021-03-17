@@ -97,8 +97,8 @@ def get_tokenizer(
         # FIXME: convert SentenceMIM into a package
         import sys
         sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../../../SentenceMIM"))
-        import pudb; pudb.set_trace()
         smim = torch.load(tokenizer_model)
+        import pudb; pudb.set_trace()
         return EmbeddingMIMTokenizer(smim=smim)
 
     return AutoTokenizer(
