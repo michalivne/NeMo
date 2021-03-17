@@ -98,7 +98,6 @@ def get_tokenizer(
         import sys
         sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../../../SentenceMIM"))
         smim = torch.load(tokenizer_model)
-        import pudb; pudb.set_trace()
         return EmbeddingMIMTokenizer(smim=smim)
 
     return AutoTokenizer(
