@@ -103,7 +103,7 @@ class MTEncDecModel(EncDecNLPModel):
             if (cfg.encoder_tokenizer.tokenizer_name != cfg.decoder_tokenizer.tokenizer_name):
                 raise ValueError("encoder_tokenizer != decoder_tokenizer which is not allowed for eMIM")
             self.smim = torch.load(self.register_artifact(
-                "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_mode))
+                "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_modes))
             self.encoder_tokenizer = self.decoder_tokenizer = EmbeddingMIMTokenizer(
                 self.smim)
 
