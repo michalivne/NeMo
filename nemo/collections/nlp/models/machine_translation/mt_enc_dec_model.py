@@ -85,20 +85,19 @@ class MTEncDecModel(EncDecNLPModel):
         # easy access to check if using eMIM
         self.is_emim = (cfg.encoder_tokenizer.tokenizer_name == "emim") or (cfg.decoder_tokenizer.tokenizer_name == "emim")
 
-        if not self.is_emim:
-            # Instantiates tokenizers and register to be saved with NeMo Model archive
-            # After this call, ther will be self.encoder_tokenizer and self.decoder_tokenizer
-            # Which can convert between tokens and token_ids for SRC and TGT languages correspondingly.
-            self.setup_enc_dec_tokenizers(
-                encoder_tokenizer_name=cfg.encoder_tokenizer.tokenizer_name,
-                encoder_tokenizer_model=cfg.encoder_tokenizer.tokenizer_model,
-                encoder_bpe_dropout=cfg.encoder_tokenizer.get(
-                    'bpe_dropout', 0.0),
-                decoder_tokenizer_name=cfg.decoder_tokenizer.tokenizer_name,
-                decoder_tokenizer_model=cfg.decoder_tokenizer.tokenizer_model,
-                decoder_bpe_dropout=cfg.decoder_tokenizer.get(
-                    'bpe_dropout', 0.0),
-            )
+        # Instantiates tokenizers and register to be saved with NeMo Model archive
+        # After this call, ther will be self.encoder_tokenizer and self.decoder_tokenizer
+        # Which can convert between tokens and token_ids for SRC and TGT languages correspondingly.
+        self.setup_enc_dec_tokenizers(
+            encoder_tokenizer_name=cfg.encoder_tokenizer.tokenizer_name,
+            encoder_tokenizer_model=cfg.encoder_tokenizer.tokenizer_model,
+            encoder_bpe_dropout=cfg.encoder_tokenizer.get(
+                'bpe_dropout', 0.0),
+            decoder_tokenizer_name=cfg.decoder_tokenizer.tokenizer_name,
+            decoder_tokenizer_model=cfg.decoder_tokenizer.tokenizer_model,
+            decoder_bpe_dropout=cfg.decoder_tokenizer.get(
+                'bpe_dropout', 0.0),
+        )
 
         # After this call, the model will have  self.source_processor and self.target_processor objects
         self.setup_pre_and_post_processing_utils(
@@ -108,12 +107,8 @@ class MTEncDecModel(EncDecNLPModel):
         super().__init__(cfg=cfg, trainer=trainer)
 
         if self.is_emim:
-            if (cfg.encoder_tokenizer.tokenizer_name != cfg.decoder_tokenizer.tokenizer_name):
-                raise ValueError("encoder_tokenizer != decoder_tokenizer which is not allowed for eMIM")
             self.smim = torch.load(self.register_artifact(
                 "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_model))
-            self.encoder_tokenizer = self.decoder_tokenizer = EmbeddingMIMTokenizer(
-                self.smim)
 
         # TODO: use get_encoder function with support for HF and Megatron
         self.encoder = TransformerEncoderNM(
