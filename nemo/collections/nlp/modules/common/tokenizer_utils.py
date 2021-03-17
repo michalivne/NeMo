@@ -17,6 +17,7 @@ from dataclasses import MISSING, dataclass
 from os import path
 from typing import Dict, List, Optional
 
+import sys
 import torch
 
 import nemo
@@ -93,8 +94,10 @@ def get_tokenizer(
     elif tokenizer_name == 'char':
         return CharTokenizer(vocab_file=vocab_file, **special_tokens_dict)
     elif tokenizer_name == 'emim':
-        smim = torch.load(tokenizer_model)
+        # FIXME: convert SentenceMIM into a package
+        import sys
         import pudb; pudb.set_trace()
+        smim = torch.load(tokenizer_model)
         return EmbeddingMIMTokenizer(smim=smim)
 
     return AutoTokenizer(
