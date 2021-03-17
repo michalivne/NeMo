@@ -202,7 +202,7 @@ class MTEncDecModel(EncDecNLPModel):
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
-        if self.emim:
+        if self.is_emim:
             import pudb; pudb.set_trace()
 
         src_hiddens = self.encoder(src, src_mask)
