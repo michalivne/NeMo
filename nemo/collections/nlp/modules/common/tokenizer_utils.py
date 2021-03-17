@@ -17,6 +17,8 @@ from dataclasses import MISSING, dataclass
 from os import path
 from typing import Dict, List, Optional
 
+import torch
+
 import nemo
 from nemo.collections.common.tokenizers.char_tokenizer import CharTokenizer
 from nemo.collections.common.tokenizers.huggingface.auto_tokenizer import AutoTokenizer
