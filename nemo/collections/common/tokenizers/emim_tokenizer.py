@@ -28,7 +28,7 @@ class EmbeddingMIMTokenizer(TokenizerSpec):
     def __init__(self, smim):
         self.smim_voc = smim.voc
         self.vocab_size = self.smim_voc.size
-        self.special_tokens = self.tokens_to_ids(["<PAD>", "<UNK>", "<BOS>", "<EOS>"])
+        self.special_tokens = self.tokens_to_ids(["<PAD>", "<UNK>", "<BOT>", "<EOT>"])
 
     def text_to_tokens(self, text):
         return self.smim_voc.tokenize(text)
