@@ -99,13 +99,6 @@ class MTEncDecModel(EncDecNLPModel):
                 decoder_bpe_dropout=cfg.decoder_tokenizer.get(
                     'bpe_dropout', 0.0),
             )
-        else:
-            if (cfg.encoder_tokenizer.tokenizer_name != cfg.decoder_tokenizer.tokenizer_name):
-                raise ValueError("encoder_tokenizer != decoder_tokenizer which is not allowed for eMIM")
-            self.smim = torch.load(self.register_artifact(
-                "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_model))
-            self.encoder_tokenizer = self.decoder_tokenizer = EmbeddingMIMTokenizer(
-                self.smim)
 
         # After this call, the model will have  self.source_processor and self.target_processor objects
         self.setup_pre_and_post_processing_utils(
@@ -113,6 +106,14 @@ class MTEncDecModel(EncDecNLPModel):
 
         # TODO: Why is this base constructor call so late in the game?
         super().__init__(cfg=cfg, trainer=trainer)
+
+        if self.is_emim:
+            if (cfg.encoder_tokenizer.tokenizer_name != cfg.decoder_tokenizer.tokenizer_name):
+                raise ValueError("encoder_tokenizer != decoder_tokenizer which is not allowed for eMIM")
+            self.smim = torch.load(self.register_artifact(
+                "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_model))
+            self.encoder_tokenizer = self.decoder_tokenizer = EmbeddingMIMTokenizer(
+                self.smim)
 
         # TODO: use get_encoder function with support for HF and Megatron
         self.encoder = TransformerEncoderNM(
