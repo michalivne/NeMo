@@ -31,10 +31,10 @@ class EmbeddingMIMTokenizer(TokenizerSpec):
         self.special_tokens = self.tokens_to_ids(["<PAD>", "<UNK>", "<BOS>", "<EOS>"])
 
     def text_to_tokens(self, text):
-        raise NotImplementedError("Not supported in this class")
+        return self.smim_voc.tokenize(text)
 
     def tokens_to_text(self, tokens):
-        raise NotImplementedError("Not supported in this class")
+        return self.smim_voc.untokenize(tokens)
 
     def text_to_ids(self, text):
         return self.smim.encode(text)
