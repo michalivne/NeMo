@@ -26,8 +26,8 @@ class EmbeddingMIMTokenizer(TokenizerSpec):
     A wrapper around a character-level word SentenceMIM (i.e., EmbeddingMIM).
     """
     def __init__(self, smim):
-        self.smim = smim
-        self.vocab_size = self.smim.voc.size
+        self.smim_voc = smim.voc
+        self.vocab_size = self.smim_voc.size
         self.special_tokens = self.tokens_to_ids(["<PAD>", "<UNK>", "<BOS>", "<EOS>"])
 
     def text_to_tokens(self, text):
@@ -51,16 +51,16 @@ class EmbeddingMIMTokenizer(TokenizerSpec):
 
     @property
     def pad_id(self):
-        return self.smim.voc.pad_idx
+        return self.smim_voc.pad_idx
 
     @property
     def bos_id(self):
-        return self.smim.voc.bot_idx
+        return self.smim_voc.bot_idx
 
     @property
     def eos_id(self):
-        return self.smim.voc.eot_idx
+        return self.smim_voc.eot_idx
 
     @property
     def unk_id(self):
-        return self.smim.voc.unk_idx
+        return self.smim_voc.unk_idx
