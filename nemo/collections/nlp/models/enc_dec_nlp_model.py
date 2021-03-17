@@ -91,8 +91,8 @@ class EncDecNLPModel(NLPModel):
         decoder_bpe_dropout=0.0,
     ):
 
-        if encoder_tokenizer_name != 'yttm' or decoder_tokenizer_name != 'yttm':
-            raise NotImplementedError(f"Currently we only support yttm tokenizer.")
+        # if encoder_tokenizer_name != 'yttm' or decoder_tokenizer_name != 'yttm':
+        #     raise NotImplementedError(f"Currently we only support yttm tokenizer.")
 
         self.encoder_tokenizer = get_tokenizer(
             tokenizer_name=encoder_tokenizer_name,
