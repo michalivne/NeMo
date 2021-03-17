@@ -22,6 +22,7 @@ from nemo.collections.common.tokenizers.char_tokenizer import CharTokenizer
 from nemo.collections.common.tokenizers.huggingface.auto_tokenizer import AutoTokenizer
 from nemo.collections.common.tokenizers.word_tokenizer import WordTokenizer
 from nemo.collections.common.tokenizers.youtokentome_tokenizer import YouTokenToMeTokenizer
+from nemo.collections.common.tokenizers.emim_tokenizer import EmbeddingMIMTokenizer
 from nemo.collections.nlp.modules.common.huggingface.huggingface_utils import get_huggingface_pretrained_lm_models_list
 from nemo.collections.nlp.modules.common.lm_utils import get_pretrained_lm_models_list
 from nemo.collections.nlp.modules.common.megatron.megatron_utils import get_megatron_tokenizer
@@ -89,6 +90,10 @@ def get_tokenizer(
         return WordTokenizer(vocab_file=vocab_file, **special_tokens_dict)
     elif tokenizer_name == 'char':
         return CharTokenizer(vocab_file=vocab_file, **special_tokens_dict)
+    elif tokenizer_name == 'emim':
+        smim = torch.load(tokenizer_model)
+        import pudb; pudb.set_trace()
+        return EmbeddingMIMTokenizer(smim=smim)
 
     return AutoTokenizer(
         pretrained_model_name=tokenizer_name, vocab_file=vocab_file, **special_tokens_dict, use_fast=use_fast
