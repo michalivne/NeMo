@@ -37,11 +37,12 @@ class EmbeddingMIMTokenizer(TokenizerSpec):
         return self.smim_voc.untokenize(tokens)
 
     def text_to_ids(self, text):
-        return self.smim.encode(text)
+        import pudb; pudb.set_trace()
+        return self.smim_voc.encode(text)
 
     def ids_to_text(self, ids):
         ids_ = [id_ for id_ in ids if id_ not in self.special_tokens]
-        return self.smim.decode(ids_)
+        return self.smim_voc.decode(ids_)
 
     def tokens_to_ids(self, tokens):
         return [self.smim_voc.get_index(t) for t in tokens]
