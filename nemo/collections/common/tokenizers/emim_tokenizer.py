@@ -44,10 +44,10 @@ class EmbeddingMIMTokenizer(TokenizerSpec):
         return self.smim.decode(ids_)
 
     def tokens_to_ids(self, tokens):
-        raise NotImplementedError("Not supported in this class")
+        return [self.smim_voc.get_index(t) for t in tokens]
 
     def ids_to_tokens(self, ids):
-        raise NotImplementedError("Not supported in this class")
+        return [self.smim_voc.get_token(i) for i in ids]
 
     @property
     def pad_id(self):
