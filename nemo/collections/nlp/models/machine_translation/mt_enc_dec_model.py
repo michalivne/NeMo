@@ -194,8 +194,9 @@ class MTEncDecModel(EncDecNLPModel):
         self.tgt_language: str = cfg.get("tgt_language", None)
 
         # easy access to check if using eMIM
-        self.is_emim = (cfg.encoder_tokenizer.tokenizer_name == "emim") or (
-            cfg.decoder_tokenizer.tokenizer_name == "emim")
+        self.is_emim_encoder = (cfg.encoder_tokenizer.tokenizer_name == "emim") or
+        self.is_emim_decoder = (cfg.decoder_tokenizer.tokenizer_name == "emim")
+        self.is_emim = self.is_emim_encoder or self.is_emim_decoder
 
         # Instantiates tokenizers and register to be saved with NeMo Model archive
         # After this call, ther will be self.encoder_tokenizer and self.decoder_tokenizer
@@ -227,6 +228,7 @@ class MTEncDecModel(EncDecNLPModel):
 
             self.emim = MIMEmbedder(smim=smim)
 
+        if self.is_emim_encoder:
             # TODO: use get_encoder function with support for HF and Megatron
             self.encoder = TransformerEncoder(
                 hidden_size=cfg.encoder.hidden_size,
@@ -240,63 +242,6 @@ class MTEncDecModel(EncDecNLPModel):
                 mask_future=cfg.encoder.mask_future,
                 pre_ln=cfg.encoder.pre_ln,
             )
-
-            # # TODO: user get_decoder function with support for HF and Megatron
-            # self.decoder = TransformerDecoder(
-            #     hidden_size=cfg.decoder.hidden_size,
-            #     num_layers=cfg.decoder.num_layers,
-            #     inner_size=cfg.decoder.inner_size,
-            #     num_attention_heads=cfg.decoder.num_attention_heads,
-            #     ffn_dropout=cfg.decoder.ffn_dropout,
-            #     attn_score_dropout=cfg.decoder.attn_score_dropout,
-            #     attn_layer_dropout=cfg.decoder.attn_layer_dropout,
-            #     hidden_act=cfg.decoder.hidden_act,
-            #     pre_ln=cfg.decoder.pre_ln,
-            # )
-
-            self.decoder = TransformerDecoderNM(
-                vocab_size=1 if self.is_emim else self.decoder_vocab_size,
-                hidden_size=cfg.decoder.hidden_size,
-                num_layers=cfg.decoder.num_layers,
-                inner_size=cfg.decoder.inner_size,
-                max_sequence_length=cfg.decoder.max_sequence_length
-                if hasattr(cfg.decoder, 'max_sequence_length')
-                else 512,
-                embedding_dropout=cfg.decoder.embedding_dropout if hasattr(
-                    cfg.decoder, 'embedding_dropout') else 0.0,
-                learn_positional_encodings=cfg.decoder.learn_positional_encodings
-                if hasattr(cfg.decoder, 'learn_positional_encodings')
-                else False,
-                num_attention_heads=cfg.decoder.num_attention_heads,
-                ffn_dropout=cfg.decoder.ffn_dropout,
-                attn_score_dropout=cfg.decoder.attn_score_dropout,
-                attn_layer_dropout=cfg.decoder.attn_layer_dropout,
-                hidden_act=cfg.decoder.hidden_act,
-                pre_ln=cfg.decoder.pre_ln,
-            )
-
-            self.log_softmax = TokenClassifier(
-                hidden_size=self.decoder.hidden_size,
-                num_classes=self.decoder_vocab_size,
-                activation=cfg.head.activation,
-                log_softmax=cfg.head.log_softmax,
-                dropout=cfg.head.dropout,
-                use_transformer_init=cfg.head.use_transformer_init,
-            )
-
-            self.beam_search = BeamSearchSequenceGenerator(
-                embedding=self.decoder.embedding,
-                decoder=self.decoder.decoder,
-                log_softmax=self.log_softmax,
-                max_sequence_length=self.decoder.max_sequence_length,
-                beam_size=cfg.beam_size,
-                bos=self.decoder_tokenizer.bos_id,
-                pad=self.decoder_tokenizer.pad_id,
-                eos=self.decoder_tokenizer.eos_id,
-                len_pen=cfg.len_pen,
-                max_delta_length=cfg.max_generation_delta,
-            )
-
         else:
             # TODO: use get_encoder function with support for HF and Megatron
             self.encoder = TransformerEncoderNM(
@@ -321,6 +266,20 @@ class MTEncDecModel(EncDecNLPModel):
                 pre_ln=cfg.encoder.pre_ln,
             )
 
+        if self.is_emim_decoder:
+            # TODO: user get_decoder function with support for HF and Megatron
+            self.decoder = TransformerDecoder(
+                hidden_size=cfg.decoder.hidden_size,
+                num_layers=cfg.decoder.num_layers,
+                inner_size=cfg.decoder.inner_size,
+                num_attention_heads=cfg.decoder.num_attention_heads,
+                ffn_dropout=cfg.decoder.ffn_dropout,
+                attn_score_dropout=cfg.decoder.attn_score_dropout,
+                attn_layer_dropout=cfg.decoder.attn_layer_dropout,
+                hidden_act=cfg.decoder.hidden_act,
+                pre_ln=cfg.decoder.pre_ln,
+            )
+        else:
             # TODO: user get_decoder function with support for HF and Megatron
             self.decoder = TransformerDecoderNM(
                 vocab_size=1 if self.is_emim else self.decoder_vocab_size,
