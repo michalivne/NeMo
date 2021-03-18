@@ -344,24 +344,34 @@ class MTEncDecModel(EncDecNLPModel):
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
-        if self.is_emim:
+        import pudb; pudb.set_trace()
+        if self.is_emim_encoder:
             # split ids into word-level embeddings
-            import pudb; pudb.set_trace()
-
             words_src, word_src_mask = self.emim(src)
-            # words_tgt, word_tgt_mask = self.emim(tgt)
-
             src_hiddens = self.encoder(words_src, words_src_mask)
-            # tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, words_src_hiddens, words_src_mask)
-            tgt_hiddens = self.decoder(tgt, tgt_mask, words_src_hiddens, words_src_mask)
         else:
             src_hiddens = self.encoder(src, src_mask)
-            tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
 
-        if self.is_emim:
-            log_probs = self.embedder.log_softmax(hidden_states=tgt_hiddens)
+
+        if self.is_emim_decoder:
+            # split ids into word-level embeddings
+            words_tgt, word_tgt_mask = self.emim(tgt)
+            if self.is_emim_encoder:
+                tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, words_src_hiddens, words_src_mask)
+            else:
+                tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, src_mask)
         else:
+            if self.is_emim_encoder:
+                tgt_hiddens = self.decoder(tgt, tgt_mask, words_src_hiddens, words_src_mask)
+            else:
+                tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
+
             log_probs = self.log_softmax(hidden_states=tgt_hiddens)
+
+        # src_hiddens = self.encoder(src, src_mask)
+        # tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
+
+        # log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
         return log_probs
 
