@@ -246,7 +246,7 @@ class MTEncDecModel(EncDecNLPModel):
         else:
             # TODO: use get_encoder function with support for HF and Megatron
             self.encoder = TransformerEncoderNM(
-                vocab_size=1 if self.is_emim else self.encoder_vocab_size,
+                vocab_size=self.encoder_vocab_size,
                 hidden_size=cfg.encoder.hidden_size,
                 num_layers=cfg.encoder.num_layers,
                 inner_size=cfg.encoder.inner_size,
@@ -283,7 +283,7 @@ class MTEncDecModel(EncDecNLPModel):
         else:
             # TODO: user get_decoder function with support for HF and Megatron
             self.decoder = TransformerDecoderNM(
-                vocab_size=1 if self.is_emim else self.decoder_vocab_size,
+                vocab_size=self.decoder_vocab_size,
                 hidden_size=cfg.decoder.hidden_size,
                 num_layers=cfg.decoder.num_layers,
                 inner_size=cfg.decoder.inner_size,
