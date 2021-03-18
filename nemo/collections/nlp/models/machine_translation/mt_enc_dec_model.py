@@ -241,17 +241,60 @@ class MTEncDecModel(EncDecNLPModel):
                 pre_ln=cfg.encoder.pre_ln,
             )
 
-            # TODO: user get_decoder function with support for HF and Megatron
-            self.decoder = TransformerDecoder(
+            # # TODO: user get_decoder function with support for HF and Megatron
+            # self.decoder = TransformerDecoder(
+            #     hidden_size=cfg.decoder.hidden_size,
+            #     num_layers=cfg.decoder.num_layers,
+            #     inner_size=cfg.decoder.inner_size,
+            #     num_attention_heads=cfg.decoder.num_attention_heads,
+            #     ffn_dropout=cfg.decoder.ffn_dropout,
+            #     attn_score_dropout=cfg.decoder.attn_score_dropout,
+            #     attn_layer_dropout=cfg.decoder.attn_layer_dropout,
+            #     hidden_act=cfg.decoder.hidden_act,
+            #     pre_ln=cfg.decoder.pre_ln,
+            # )
+
+            self.decoder = TransformerDecoderNM(
+                vocab_size=1 if self.is_emim else self.decoder_vocab_size,
                 hidden_size=cfg.decoder.hidden_size,
                 num_layers=cfg.decoder.num_layers,
                 inner_size=cfg.decoder.inner_size,
+                max_sequence_length=cfg.decoder.max_sequence_length
+                if hasattr(cfg.decoder, 'max_sequence_length')
+                else 512,
+                embedding_dropout=cfg.decoder.embedding_dropout if hasattr(
+                    cfg.decoder, 'embedding_dropout') else 0.0,
+                learn_positional_encodings=cfg.decoder.learn_positional_encodings
+                if hasattr(cfg.decoder, 'learn_positional_encodings')
+                else False,
                 num_attention_heads=cfg.decoder.num_attention_heads,
                 ffn_dropout=cfg.decoder.ffn_dropout,
                 attn_score_dropout=cfg.decoder.attn_score_dropout,
                 attn_layer_dropout=cfg.decoder.attn_layer_dropout,
                 hidden_act=cfg.decoder.hidden_act,
                 pre_ln=cfg.decoder.pre_ln,
+            )
+
+            self.log_softmax = TokenClassifier(
+                hidden_size=self.decoder.hidden_size,
+                num_classes=self.decoder_vocab_size,
+                activation=cfg.head.activation,
+                log_softmax=cfg.head.log_softmax,
+                dropout=cfg.head.dropout,
+                use_transformer_init=cfg.head.use_transformer_init,
+            )
+
+            self.beam_search = BeamSearchSequenceGenerator(
+                embedding=self.decoder.embedding,
+                decoder=self.decoder.decoder,
+                log_softmax=self.log_softmax,
+                max_sequence_length=self.decoder.max_sequence_length,
+                beam_size=cfg.beam_size,
+                bos=self.decoder_tokenizer.bos_id,
+                pad=self.decoder_tokenizer.pad_id,
+                eos=self.decoder_tokenizer.eos_id,
+                len_pen=cfg.len_pen,
+                max_delta_length=cfg.max_generation_delta,
             )
 
         else:
@@ -347,10 +390,11 @@ class MTEncDecModel(EncDecNLPModel):
             import pudb; pudb.set_trace()
 
             words_src, word_src_mask = self.emim(src)
-            words_tgt, word_tgt_mask = self.emim(tgt)
+            # words_tgt, word_tgt_mask = self.emim(tgt)
 
             src_hiddens = self.encoder(words_src, words_src_mask)
-            tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, words_src_hiddens, words_src_mask)
+            # tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, words_src_hiddens, words_src_mask)
+            tgt_hiddens = self.decoder(tgt, tgt_mask, words_src_hiddens, words_src_mask)
         else:
             src_hiddens = self.encoder(src, src_mask)
             tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
