@@ -254,28 +254,6 @@ class MTEncDecModel(EncDecNLPModel):
                 pre_ln=cfg.decoder.pre_ln,
             )
 
-            self.log_softmax = TokenClassifier(
-                hidden_size=self.decoder.hidden_size,
-                num_classes=self.decoder_vocab_size,
-                activation=cfg.head.activation,
-                log_softmax=cfg.head.log_softmax,
-                dropout=cfg.head.dropout,
-                use_transformer_init=cfg.head.use_transformer_init,
-            )
-
-            self.beam_search = BeamSearchSequenceGenerator(
-                embedding=self.decoder.embedding,
-                decoder=self.decoder.decoder,
-                log_softmax=self.log_softmax,
-                max_sequence_length=self.decoder.max_sequence_length,
-                beam_size=cfg.beam_size,
-                bos=self.decoder_tokenizer.bos_id,
-                pad=self.decoder_tokenizer.pad_id,
-                eos=self.decoder_tokenizer.eos_id,
-                len_pen=cfg.len_pen,
-                max_delta_length=cfg.max_generation_delta,
-            )
-
         else:
             # TODO: use get_encoder function with support for HF and Megatron
             self.encoder = TransformerEncoderNM(
