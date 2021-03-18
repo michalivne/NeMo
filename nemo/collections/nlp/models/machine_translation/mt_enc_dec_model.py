@@ -85,11 +85,10 @@ class MIMEmbedder(torch.nn.Module):
         # split into group based on a delimiter
         return [list(y) for x, y in itertools.groupby(filtered_ids, lambda z: z == self.delimiter) if not x]
 
-    def forward(self, ids):
+    def embed_ids(self, ids):
         """
         Returns word-level embeddings from sentence of character-level ids
         """
-        import pudb; pudb.set_trace()
         word_ids = self.group_ids(ids)
 
         # FIXME: not efficient to call smim for every word, better to batch
@@ -99,7 +98,7 @@ class MIMEmbedder(torch.nn.Module):
             if len(w) == 1:
                 v = w[0].item()
                 if v in self.emb_map:
-                    e = self.emb.weight[self.emb_map[v]]
+                    e = self.emb.weight[self.emb_map[v]].view((1, -1))
 
             if e is None:
                 e = self.smim.encode_latent([[self.smim.voc.bot_idx]+w+[self.smim.voc.eot_idx]])["z"]
@@ -108,6 +107,12 @@ class MIMEmbedder(torch.nn.Module):
 
         return word_emb
 
+
+    def forward(self, batch_ids):
+        """
+        Embed a batch of character-level ids  into a padded world-level embeddings.
+        """
+        import pudb; pudb.set_trace()
 
 class MTEncDecModel(EncDecNLPModel):
     """
@@ -257,7 +262,7 @@ class MTEncDecModel(EncDecNLPModel):
         if self.is_emim:
             import pudb; pudb.set_trace()
 
-            words_src = self.emim(src[0])
+            words_src = self.emim(src)
 
         # split ids into words
 
