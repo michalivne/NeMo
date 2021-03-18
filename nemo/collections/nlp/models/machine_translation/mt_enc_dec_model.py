@@ -348,7 +348,7 @@ class MTEncDecModel(EncDecNLPModel):
         import pudb; pudb.set_trace()
         if self.is_emim_encoder:
             # split ids into word-level embeddings
-            words_src, word_src_mask = self.emim(src)
+            words_src, words_src_mask = self.emim(src)
             src_hiddens = self.encoder(words_src, words_src_mask)
         else:
             src_hiddens = self.encoder(src, src_mask)
@@ -356,14 +356,14 @@ class MTEncDecModel(EncDecNLPModel):
 
         if self.is_emim_decoder:
             # split ids into word-level embeddings
-            words_tgt, word_tgt_mask = self.emim(tgt)
+            words_tgt, words_tgt_mask = self.emim(tgt)
             if self.is_emim_encoder:
-                tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, words_src_hiddens, words_src_mask)
+                tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, words_src_mask)
             else:
                 tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, src_mask)
         else:
             if self.is_emim_encoder:
-                tgt_hiddens = self.decoder(tgt, tgt_mask, words_src_hiddens, words_src_mask)
+                tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, words_src_mask)
             else:
                 tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
 
