@@ -173,7 +173,7 @@ class MIMEmbedder(torch.nn.Module):
         # add positional embeddings
         pos_batch_emb = padded_batch_emb + self.pos_emb(torch.arange(padded_batch_emb.shape[1], device=device))
 
-        return pos_batch_emb, padded_batch_mask
+        return pos_batch_emb.contiguous(), padded_batch_mask.contiguous()
 
 class MTEncDecModel(EncDecNLPModel):
     """
@@ -348,7 +348,9 @@ class MTEncDecModel(EncDecNLPModel):
         # import pudb; pudb.set_trace()
         if self.is_emim_encoder:
             # split ids into word-level embeddings
-            words_src, words_src_mask = self.emim(src)
+            with torch.no_grad():
+                words_src, words_src_mask = self.emim(src)
+
             src_hiddens = self.encoder(words_src, words_src_mask)
         else:
             src_hiddens = self.encoder(src, src_mask)
@@ -356,7 +358,9 @@ class MTEncDecModel(EncDecNLPModel):
 
         if self.is_emim_decoder:
             # split ids into word-level embeddings
-            words_tgt, words_tgt_mask = self.emim(tgt)
+            with torch.no_grad():
+                words_tgt, words_tgt_mask = self.emim(tgt)
+
             if self.is_emim_encoder:
                 tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, words_src_mask)
             else:
