@@ -75,7 +75,7 @@ class MIMPositionalEmbedding(nn.Module):
         )
 
     def forward(self, pos_seq):
-        sinusoid_inp = torch.ger(pos_seq.type_as(self.inv_freq), self.inv_freq)
+        sinusoid_inp = torch.outer(pos_seq.type_as(self.inv_freq), self.inv_freq)
         pos_emb = torch.cat([sinusoid_inp.sin(), sinusoid_inp.cos()], dim=-1)
 
         # added gated positional embeddings
@@ -152,6 +152,7 @@ class MIMEmbedder(torch.nn.Module):
         """
         Embed a batch of character-level ids  into a padded world-level embeddings.
         """
+        device = batch_ids.device
         import pudb; pudb.set_trace()
         # embed ids into world-level embedding
         batch_emb = list(map(self.embed_ids, batch_ids))
@@ -166,11 +167,11 @@ class MIMEmbedder(torch.nn.Module):
             padded_batch_mask.append(torch.tensor(([1]*len(emb) + [0] * len_pad)).type_as(batch_ids))
             padded_batch_emb.append(torch.cat(emb + [pad_emb] * len_pad, dim=0))
 
-        padded_batch_emb = torch.stack(padded_batch_emb, dim=0)
-        padded_batch_mask = torch.stack(padded_batch_mask, dim=0)
+        padded_batch_emb = torch.stack(padded_batch_emb, dim=0).to(device)
+        padded_batch_mask = torch.stack(padded_batch_mask, dim=0).to(device)
 
         # add positional embeddings
-        pos_batch_emb = self.pos_emb(padded_batch_emb)
+        pos_batch_emb += self.pos_emb(torch.arange(padded_batch_emb.shape[1], device=device))
 
         return pos_batch_emb, padded_batch_mask
 
