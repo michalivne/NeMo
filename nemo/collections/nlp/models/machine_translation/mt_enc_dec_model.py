@@ -99,7 +99,7 @@ class MIMEmbedder(torch.nn.Module):
             if len(w) == 1:
                 v = w[0].item()
                 if v in self.emb_map:
-                    e = self.emb[self.emb_map[v]]
+                    e = self.emb.weight[self.emb_map[v]]
 
             if e is None:
                 e = self.smim.encode_latent([[self.smim.voc.bot_idx]+w+[self.smim.voc.eot_idx]])["z"]
