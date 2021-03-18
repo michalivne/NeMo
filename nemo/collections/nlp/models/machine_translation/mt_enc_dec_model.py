@@ -369,7 +369,7 @@ class MTEncDecModel(EncDecNLPModel):
             else:
                 tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
 
-            import pudb; pudb.set_trace()
+            # import pudb; pudb.set_trace()
             log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
         # src_hiddens = self.encoder(src, src_mask)
