@@ -369,7 +369,7 @@ class MTEncDecModel(EncDecNLPModel):
             self.log_softmax.mlp.layer0.weight = self.decoder.embedding.token_embedding.weight
 
         # TODO: encoder and decoder with different hidden size?
-        std_init_range = 1 / self.encoder.hidden_size ** 0.5
+        std_init_range = 1 / cfg.decoder.hidden_size ** 0.5
         self.apply(lambda module: transformer_weights_init(
             module, std_init_range))
 
