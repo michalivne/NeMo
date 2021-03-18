@@ -610,13 +610,15 @@ class MTEncDecModel(EncDecNLPModel):
                     words_src, words_src_mask = self.emim(src)
 
                 src_hiddens = self.encoder(words_src, words_src_mask)
+                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=word_src_mask)
             else:
                 src_hiddens = self.encoder(src, src_mask)
+                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
 
 
             # src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
-            beam_results = self.beam_search(
-                encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+            # beam_results = self.beam_search(
+            #     encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
 
             beam_results = self.filter_predicted_ids(beam_results)
 
