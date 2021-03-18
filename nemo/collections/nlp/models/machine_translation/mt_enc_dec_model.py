@@ -59,8 +59,13 @@ class MIMEmbedder(torch.nn.Module):
         # get id of space to collect all ids per word
         self.delimiter = self.smim.voc.get_index(" ")
 
-        # add parametric embeddings for <BOS> and <EOS> for NMT model
+        # add parametric embeddings for <PAD>, <BOS>, <EOS> for NMT model
         self.emb = torch.nn.Embedding(2, self.smim.latent_size)
+        self.emb_map = {
+            self.smim.voc.pad_idx: 0,
+            self.smim.voc.bot_idx: 1,
+            self.smim.voc.eot_idx: 2,
+        }
 
     def group_ids(self, ids):
         """
@@ -69,11 +74,13 @@ class MIMEmbedder(torch.nn.Module):
         filtered_ids = []
         specials_ids = (self.smim.voc.bot_idx, self.smim.voc.eot_idx)
         # filter padding and add a delimiter after smim <BOT> and <EOT>
-        for i in filter(ids, lambda i: i != self.smim.voc.pad_idx):
-            if i in specials_ids:
+        for i in filter(lambda x: x != self.smim.voc.pad_idx, ids):
+            if i == self.smim.voc.bot_idx:
                 filtered_ids.extend([i, self.delimiter])
-        else:
-            filtered_ids.append(i)
+            elif i == self.smim.voc.eot_idx:
+                filtered_ids.extend([self.delimiter, i])
+            else:
+                filtered_ids.append(i)
 
         # split into group based on a delimiter
         return [list(y) for x, y in itertools.groupby(filtered_ids, lambda z: z == self.delimiter) if not x]
@@ -82,7 +89,24 @@ class MIMEmbedder(torch.nn.Module):
         """
         Returns word-level embeddings from sentence of character-level ids
         """
+        import pudb; pudb.set_trace()
         word_ids = self.group_ids(ids)
+
+        # FIXME: not efficient to call smim for every word, better to batch
+        word_emb = []
+        for w in word_ids:
+            e = None
+            if len(w) == 1:
+                v = w[0].item()
+                if v in self.emb_map:
+                    e = self.emb[self.emb_map[v]]
+
+            if e is None:
+                e = self.smim.encode_latent([[self.smim.voc.bot_idx]+w+[self.smim.voc.eot_idx]])["z"]
+
+            word_emb.append(e)
+
+        return word_emb
 
 
 class MTEncDecModel(EncDecNLPModel):
@@ -132,10 +156,11 @@ class MTEncDecModel(EncDecNLPModel):
         if self.is_emim:
             smim = torch.load(self.register_artifact(
                 "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_model))
-            self.emim = MIMEmbedder(smim=smim)
-            # disable gradients
-            for param in self.emim.parameters():
+            # disable gradients for smim
+            for param in smim.parameters():
                 param.requires_grad = False
+
+            self.emim = MIMEmbedder(smim=smim)
 
         # TODO: use get_encoder function with support for HF and Megatron
         self.encoder = TransformerEncoderNM(
@@ -230,8 +255,9 @@ class MTEncDecModel(EncDecNLPModel):
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
         if self.is_emim:
-            import pudb
-            pudb.set_trace()
+            import pudb; pudb.set_trace()
+
+            words_src = self.emim(src[0])
 
         # split ids into words
 
