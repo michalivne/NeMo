@@ -153,7 +153,7 @@ class MIMEmbedder(torch.nn.Module):
         Embed a batch of character-level ids  into a padded world-level embeddings.
         """
         device = batch_ids.device
-        import pudb; pudb.set_trace()
+
         # embed ids into world-level embedding
         batch_emb = list(map(self.embed_ids, batch_ids))
         # find longest sequence
@@ -171,7 +171,7 @@ class MIMEmbedder(torch.nn.Module):
         padded_batch_mask = torch.stack(padded_batch_mask, dim=0).to(device)
 
         # add positional embeddings
-        pos_batch_emb += self.pos_emb(torch.arange(padded_batch_emb.shape[1], device=device))
+        pos_batch_emb = padded_batch_emb + self.pos_emb(torch.arange(padded_batch_emb.shape[1], device=device))
 
         return pos_batch_emb, padded_batch_mask
 
