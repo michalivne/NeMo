@@ -56,11 +56,33 @@ class MIMEmbedder(torch.nn.Module):
     def __init__(self, smim):
         super().__init__()
         self.smim = smim
+        # get id of space to collect all ids per word
+        self.delimiter = self.smim.voc.get_index(" ")
 
-    def forward(self, x):
+        # add parametric embeddings for <BOS> and <EOS> for NMT model
+        self.emb = torch.nn.Embedding(2, self.smim.latent_size)
+
+    def group_ids(self, ids):
         """
-        Returns embeddings of a sentence
+        Collect ids into words by breaking on a delimiter (" ")
         """
+        filtered_ids = []
+        specials_ids = (self.smim.voc.bot_idx, self.smim.voc.eot_idx)
+        # filter padding and add a delimiter after smim <BOT> and <EOT>
+        for i in filter(ids, lambda i: i != self.smim.voc.pad_idx):
+            if i in specials_ids:
+                filtered_ids.extend([i, self.delimiter])
+        else:
+            filtered_ids.append(i)
+
+        # split into group based on a delimiter
+        return [list(y) for x, y in itertools.groupby(filtered_ids, lambda z: z == self.delimiter) if not x]
+
+    def forward(self, ids):
+        """
+        Returns word-level embeddings from sentence of character-level ids
+        """
+        word_ids = self.group_ids(ids)
 
 
 class MTEncDecModel(EncDecNLPModel):
@@ -83,7 +105,8 @@ class MTEncDecModel(EncDecNLPModel):
         self.tgt_language: str = cfg.get("tgt_language", None)
 
         # easy access to check if using eMIM
-        self.is_emim = (cfg.encoder_tokenizer.tokenizer_name == "emim") or (cfg.decoder_tokenizer.tokenizer_name == "emim")
+        self.is_emim = (cfg.encoder_tokenizer.tokenizer_name == "emim") or (
+            cfg.decoder_tokenizer.tokenizer_name == "emim")
 
         # Instantiates tokenizers and register to be saved with NeMo Model archive
         # After this call, ther will be self.encoder_tokenizer and self.decoder_tokenizer
@@ -107,8 +130,12 @@ class MTEncDecModel(EncDecNLPModel):
         super().__init__(cfg=cfg, trainer=trainer)
 
         if self.is_emim:
-            self.smim = torch.load(self.register_artifact(
+            smim = torch.load(self.register_artifact(
                 "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_model))
+            self.emim = MIMEmbedder(smim=smim)
+            # disable gradients
+            for param in self.emim.parameters():
+                param.requires_grad = False
 
         # TODO: use get_encoder function with support for HF and Megatron
         self.encoder = TransformerEncoderNM(
@@ -203,7 +230,10 @@ class MTEncDecModel(EncDecNLPModel):
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
         if self.is_emim:
-            import pudb; pudb.set_trace()
+            import pudb
+            pudb.set_trace()
+
+        # split ids into words
 
         src_hiddens = self.encoder(src, src_mask)
         tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
