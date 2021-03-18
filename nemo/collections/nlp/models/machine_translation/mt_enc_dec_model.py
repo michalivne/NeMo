@@ -147,7 +147,6 @@ class MIMEmbedder(torch.nn.Module):
 
         return word_emb
 
-
     def forward(self, batch_ids):
         """
         Embed a batch of character-level ids  into a padded world-level embeddings.
@@ -174,6 +173,7 @@ class MIMEmbedder(torch.nn.Module):
         pos_batch_emb = padded_batch_emb + self.pos_emb(torch.arange(padded_batch_emb.shape[1], device=device))
 
         return pos_batch_emb.contiguous(), padded_batch_mask.contiguous()
+
 
 class MTEncDecModel(EncDecNLPModel):
     """
@@ -345,7 +345,6 @@ class MTEncDecModel(EncDecNLPModel):
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
-        # import pudb; pudb.set_trace()
         if self.is_emim_encoder:
             # split ids into word-level embeddings
             with torch.no_grad():
@@ -354,7 +353,6 @@ class MTEncDecModel(EncDecNLPModel):
             src_hiddens = self.encoder(words_src, words_src_mask)
         else:
             src_hiddens = self.encoder(src, src_mask)
-
 
         if self.is_emim_decoder:
             # split ids into word-level embeddings
@@ -371,6 +369,7 @@ class MTEncDecModel(EncDecNLPModel):
             else:
                 tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
 
+            import pudb; pudb.set_trace()
             log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
         # src_hiddens = self.encoder(src, src_mask)
