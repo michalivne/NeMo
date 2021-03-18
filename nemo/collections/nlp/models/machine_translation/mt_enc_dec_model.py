@@ -345,7 +345,7 @@ class MTEncDecModel(EncDecNLPModel):
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
-        import pudb; pudb.set_trace()
+        # import pudb; pudb.set_trace()
         if self.is_emim_encoder:
             # split ids into word-level embeddings
             words_src, words_src_mask = self.emim(src)
