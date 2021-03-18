@@ -38,6 +38,8 @@ from nemo.collections.nlp.models.machine_translation.mt_enc_dec_config import MT
 from nemo.collections.nlp.modules.common import TokenClassifier
 from nemo.collections.nlp.modules.common.transformer import BeamSearchSequenceGenerator
 from nemo.collections.nlp.modules.common.transformer.transformer import TransformerDecoderNM, TransformerEncoderNM
+from nemo.collections.nlp.modules.common.transformer.transformer_decoders import TransformerDecoder
+from nemo.collections.nlp.modules.common.transformer.transformer_encoders import TransformerEncoder
 from nemo.core.classes.common import typecheck
 from nemo.utils import logging, model_utils
 
@@ -46,6 +48,40 @@ from nemo.collections.common.tokenizers.emim_tokenizer import EmbeddingMIMTokeni
 
 
 __all__ = ['MTEncDecModel']
+
+
+class MIMPositionalEmbedding(nn.Module):
+    """
+    Positional embeddings
+    """
+
+    def __init__(self, emb_size, gated=True):
+        super().__init__()
+
+        self.emb_size = emb_size
+        self.gated = gated
+
+        inv_freq = 1 / (10000 ** (torch.arange(0.0, emb_size, 2.0) / emb_size))
+        self.register_buffer("inv_freq", inv_freq)
+
+        if self.gated:
+            self.pos_gate = torch.nn.Parameter(torch.zeros(emb_size))
+
+    def extra_repr(self):
+        return "emb_size={emb_size}, gated={gated}".format(
+            emb_size=self.emb_size,
+            gated=self.gated,
+        )
+
+    def forward(self, pos_seq):
+        sinusoid_inp = torch.ger(pos_seq.type_as(self.inv_freq), self.inv_freq)
+        pos_emb = torch.cat([sinusoid_inp.sin(), sinusoid_inp.cos()], dim=-1)
+
+        # added gated positional embeddings
+        if self.gated:
+            pos_emb = pos_emb * torch.sigmoid(self.pos_gate)
+
+        return pos_emb[None, :, :]
 
 
 class MIMEmbedder(torch.nn.Module):
@@ -66,6 +102,9 @@ class MIMEmbedder(torch.nn.Module):
             self.smim.voc.eot_idx: 2,
         }
         self.emb = torch.nn.Embedding(len(self.emb_map), self.smim.latent_size)
+
+        # add positional embeddings
+        self.pos_emb = MIMPositionalEmbedding(emb_size=self.smim.latent_size)
 
     def group_ids(self, ids):
         """
@@ -113,6 +152,26 @@ class MIMEmbedder(torch.nn.Module):
         Embed a batch of character-level ids  into a padded world-level embeddings.
         """
         import pudb; pudb.set_trace()
+        # embed ids into world-level embedding
+        batch_emb = list(map(self.embed_ids, batch_ids))
+        # find longest sequence
+        max_len = max(map(len, batch_emb))
+        # pad sequences
+        pad_emb = self.emb.weight[self.emb_map[self.smim.voc.pad_idx]].view((1, -1))
+        padded_batch_emb = []
+        padded_batch_mask = []
+        for emb in batch_emb:
+            len_pad = (max_len - len(emb))
+            padded_batch_mask.append(torch.tensor(([1]*len(emb) + [0] * len_pad)).type_as(batch_ids))
+            padded_batch_emb.append(torch.cat(emb + [pad_emb] * len_pad, dim=0))
+
+        padded_batch_emb = torch.stack(padded_batch_emb, dim=0)
+        padded_batch_mask = torch.stack(padded_batch_mask, dim=0)
+
+        # add positional embeddings
+        pos_batch_emb = self.pos_emb(padded_batch_emb)
+
+        return pos_batch_emb, padded_batch_mask
 
 class MTEncDecModel(EncDecNLPModel):
     """
@@ -167,52 +226,101 @@ class MTEncDecModel(EncDecNLPModel):
 
             self.emim = MIMEmbedder(smim=smim)
 
-        # TODO: use get_encoder function with support for HF and Megatron
-        self.encoder = TransformerEncoderNM(
-            vocab_size=1 if self.is_emim else self.encoder_vocab_size,
-            hidden_size=cfg.encoder.hidden_size,
-            num_layers=cfg.encoder.num_layers,
-            inner_size=cfg.encoder.inner_size,
-            max_sequence_length=cfg.encoder.max_sequence_length
-            if hasattr(cfg.encoder, 'max_sequence_length')
-            else 512,
-            embedding_dropout=cfg.encoder.embedding_dropout if hasattr(
-                cfg.encoder, 'embedding_dropout') else 0.0,
-            learn_positional_encodings=cfg.encoder.learn_positional_encodings
-            if hasattr(cfg.encoder, 'learn_positional_encodings')
-            else False,
-            num_attention_heads=cfg.encoder.num_attention_heads,
-            ffn_dropout=cfg.encoder.ffn_dropout,
-            attn_score_dropout=cfg.encoder.attn_score_dropout,
-            attn_layer_dropout=cfg.encoder.attn_layer_dropout,
-            hidden_act=cfg.encoder.hidden_act,
-            mask_future=cfg.encoder.mask_future,
-            pre_ln=cfg.encoder.pre_ln,
-        )
+            # TODO: use get_encoder function with support for HF and Megatron
+            self.encoder = TransformerEncoder(
+                hidden_size=cfg.encoder.hidden_size,
+                num_layers=cfg.encoder.num_layers,
+                inner_size=cfg.encoder.inner_size,
+                num_attention_heads=cfg.encoder.num_attention_heads,
+                ffn_dropout=cfg.encoder.ffn_dropout,
+                attn_score_dropout=cfg.encoder.attn_score_dropout,
+                attn_layer_dropout=cfg.encoder.attn_layer_dropout,
+                hidden_act=cfg.encoder.hidden_act,
+                mask_future=cfg.encoder.mask_future,
+                pre_ln=cfg.encoder.pre_ln,
+            )
 
-        # TODO: user get_decoder function with support for HF and Megatron
-        self.decoder = TransformerDecoderNM(
-            vocab_size=1 if self.is_emim else self.decoder_vocab_size,
-            hidden_size=cfg.decoder.hidden_size,
-            num_layers=cfg.decoder.num_layers,
-            inner_size=cfg.decoder.inner_size,
-            max_sequence_length=cfg.decoder.max_sequence_length
-            if hasattr(cfg.decoder, 'max_sequence_length')
-            else 512,
-            embedding_dropout=cfg.decoder.embedding_dropout if hasattr(
-                cfg.decoder, 'embedding_dropout') else 0.0,
-            learn_positional_encodings=cfg.decoder.learn_positional_encodings
-            if hasattr(cfg.decoder, 'learn_positional_encodings')
-            else False,
-            num_attention_heads=cfg.decoder.num_attention_heads,
-            ffn_dropout=cfg.decoder.ffn_dropout,
-            attn_score_dropout=cfg.decoder.attn_score_dropout,
-            attn_layer_dropout=cfg.decoder.attn_layer_dropout,
-            hidden_act=cfg.decoder.hidden_act,
-            pre_ln=cfg.decoder.pre_ln,
-        )
+            # TODO: user get_decoder function with support for HF and Megatron
+            self.decoder = TransformerDecoder(
+                hidden_size=cfg.decoder.hidden_size,
+                num_layers=cfg.decoder.num_layers,
+                inner_size=cfg.decoder.inner_size,
+                num_attention_heads=cfg.decoder.num_attention_heads,
+                ffn_dropout=cfg.decoder.ffn_dropout,
+                attn_score_dropout=cfg.decoder.attn_score_dropout,
+                attn_layer_dropout=cfg.decoder.attn_layer_dropout,
+                hidden_act=cfg.decoder.hidden_act,
+                pre_ln=cfg.decoder.pre_ln,
+            )
 
-        if not self.is_emim:
+            self.log_softmax = TokenClassifier(
+                hidden_size=self.decoder.hidden_size,
+                num_classes=self.decoder_vocab_size,
+                activation=cfg.head.activation,
+                log_softmax=cfg.head.log_softmax,
+                dropout=cfg.head.dropout,
+                use_transformer_init=cfg.head.use_transformer_init,
+            )
+
+            self.beam_search = BeamSearchSequenceGenerator(
+                embedding=self.decoder.embedding,
+                decoder=self.decoder.decoder,
+                log_softmax=self.log_softmax,
+                max_sequence_length=self.decoder.max_sequence_length,
+                beam_size=cfg.beam_size,
+                bos=self.decoder_tokenizer.bos_id,
+                pad=self.decoder_tokenizer.pad_id,
+                eos=self.decoder_tokenizer.eos_id,
+                len_pen=cfg.len_pen,
+                max_delta_length=cfg.max_generation_delta,
+            )
+
+        else:
+            # TODO: use get_encoder function with support for HF and Megatron
+            self.encoder = TransformerEncoderNM(
+                vocab_size=1 if self.is_emim else self.encoder_vocab_size,
+                hidden_size=cfg.encoder.hidden_size,
+                num_layers=cfg.encoder.num_layers,
+                inner_size=cfg.encoder.inner_size,
+                max_sequence_length=cfg.encoder.max_sequence_length
+                if hasattr(cfg.encoder, 'max_sequence_length')
+                else 512,
+                embedding_dropout=cfg.encoder.embedding_dropout if hasattr(
+                    cfg.encoder, 'embedding_dropout') else 0.0,
+                learn_positional_encodings=cfg.encoder.learn_positional_encodings
+                if hasattr(cfg.encoder, 'learn_positional_encodings')
+                else False,
+                num_attention_heads=cfg.encoder.num_attention_heads,
+                ffn_dropout=cfg.encoder.ffn_dropout,
+                attn_score_dropout=cfg.encoder.attn_score_dropout,
+                attn_layer_dropout=cfg.encoder.attn_layer_dropout,
+                hidden_act=cfg.encoder.hidden_act,
+                mask_future=cfg.encoder.mask_future,
+                pre_ln=cfg.encoder.pre_ln,
+            )
+
+            # TODO: user get_decoder function with support for HF and Megatron
+            self.decoder = TransformerDecoderNM(
+                vocab_size=1 if self.is_emim else self.decoder_vocab_size,
+                hidden_size=cfg.decoder.hidden_size,
+                num_layers=cfg.decoder.num_layers,
+                inner_size=cfg.decoder.inner_size,
+                max_sequence_length=cfg.decoder.max_sequence_length
+                if hasattr(cfg.decoder, 'max_sequence_length')
+                else 512,
+                embedding_dropout=cfg.decoder.embedding_dropout if hasattr(
+                    cfg.decoder, 'embedding_dropout') else 0.0,
+                learn_positional_encodings=cfg.decoder.learn_positional_encodings
+                if hasattr(cfg.decoder, 'learn_positional_encodings')
+                else False,
+                num_attention_heads=cfg.decoder.num_attention_heads,
+                ffn_dropout=cfg.decoder.ffn_dropout,
+                attn_score_dropout=cfg.decoder.attn_score_dropout,
+                attn_layer_dropout=cfg.decoder.attn_layer_dropout,
+                hidden_act=cfg.decoder.hidden_act,
+                pre_ln=cfg.decoder.pre_ln,
+            )
+
             self.log_softmax = TokenClassifier(
                 hidden_size=self.decoder.hidden_size,
                 num_classes=self.decoder_vocab_size,
@@ -237,10 +345,6 @@ class MTEncDecModel(EncDecNLPModel):
 
             # tie weights of embedding and softmax matrices
             self.log_softmax.mlp.layer0.weight = self.decoder.embedding.token_embedding.weight
-        else:
-            # TODO: replace with eMIM
-            self.decoder._embedding
-            self.decoder._embedding
 
         # TODO: encoder and decoder with different hidden size?
         std_init_range = 1 / self.encoder.hidden_size ** 0.5
@@ -260,14 +364,18 @@ class MTEncDecModel(EncDecNLPModel):
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
         if self.is_emim:
+            # split ids into word-level embeddings
             import pudb; pudb.set_trace()
 
-            words_src = self.emim(src)
+            words_src, word_src_mask = self.emim(src)
+            words_tgt, word_tgt_mask = self.emim(tgt)
 
-        # split ids into words
+            src_hiddens = self.encoder(words_src, words_src_mask)
+            tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, words_src_hiddens, words_src_mask)
+        else:
+            src_hiddens = self.encoder(src, src_mask)
+            tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
 
-        src_hiddens = self.encoder(src, src_mask)
-        tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
         if self.is_emim:
             log_probs = self.embedder.log_softmax(hidden_states=tgt_hiddens)
         else:
