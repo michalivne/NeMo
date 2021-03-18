@@ -604,13 +604,15 @@ class MTEncDecModel(EncDecNLPModel):
         try:
             self.eval()
 
+            # FIXME: add support in eMIMM decoder
+
             if self.is_emim_encoder:
                 # split ids into word-level embeddings
                 with torch.no_grad():
                     words_src, words_src_mask = self.emim(src)
 
                 src_hiddens = self.encoder(words_src, words_src_mask)
-                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=word_src_mask)
+                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=words_src_mask)
             else:
                 src_hiddens = self.encoder(src, src_mask)
                 beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
