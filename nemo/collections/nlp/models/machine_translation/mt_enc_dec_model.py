@@ -604,13 +604,19 @@ class MTEncDecModel(EncDecNLPModel):
         try:
             self.eval()
 
-            src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
-            if not self.is_emim:
-                beam_results = self.beam_search(
-                    encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+            if self.is_emim_encoder:
+                # split ids into word-level embeddings
+                with torch.no_grad():
+                    words_src, words_src_mask = self.emim(src)
+
+                src_hiddens = self.encoder(words_src, words_src_mask)
             else:
-                # TODO: replace beam_search with emim
-                pass
+                src_hiddens = self.encoder(src, src_mask)
+
+
+            # src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
+            beam_results = self.beam_search(
+                encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
 
             beam_results = self.filter_predicted_ids(beam_results)
 
