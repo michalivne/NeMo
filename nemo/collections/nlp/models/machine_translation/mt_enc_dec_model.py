@@ -20,6 +20,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import torch
+from torch import nn
 import torch.utils.data as pt_data
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer
