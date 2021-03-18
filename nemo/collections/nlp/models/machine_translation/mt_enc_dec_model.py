@@ -194,7 +194,7 @@ class MTEncDecModel(EncDecNLPModel):
         self.tgt_language: str = cfg.get("tgt_language", None)
 
         # easy access to check if using eMIM
-        self.is_emim_encoder = (cfg.encoder_tokenizer.tokenizer_name == "emim") or
+        self.is_emim_encoder = (cfg.encoder_tokenizer.tokenizer_name == "emim")
         self.is_emim_decoder = (cfg.decoder_tokenizer.tokenizer_name == "emim")
         self.is_emim = self.is_emim_encoder or self.is_emim_decoder
 
