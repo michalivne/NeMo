@@ -60,12 +60,12 @@ class MIMEmbedder(torch.nn.Module):
         self.delimiter = self.smim.voc.get_index(" ")
 
         # add parametric embeddings for <PAD>, <BOS>, <EOS> for NMT model
-        self.emb = torch.nn.Embedding(2, self.smim.latent_size)
         self.emb_map = {
             self.smim.voc.pad_idx: 0,
             self.smim.voc.bot_idx: 1,
             self.smim.voc.eot_idx: 2,
         }
+        self.emb = torch.nn.Embedding(len(self.emb_map), self.smim.latent_size)
 
     def group_ids(self, ids):
         """
