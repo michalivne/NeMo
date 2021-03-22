@@ -267,8 +267,8 @@ class MTEncDecModel(EncDecNLPModel):
         self.tgt_language: str = cfg.get("tgt_language", None)
 
         # easy access to check if using eMIM
-        self.is_emim_encoder = (cfg.encoder_tokenizer.tokenizer_name == "emim")
-        self.is_emim_decoder = (cfg.decoder_tokenizer.tokenizer_name == "emim")
+        self.is_emim_encoder = (cfg.encoder_tokenizer.tokenizer_name.startswith("emim"))
+        self.is_emim_decoder = (cfg.decoder_tokenizer.tokenizer_name.startswith("emim"))
         self.is_emim = self.is_emim_encoder or self.is_emim_decoder
 
         # Instantiates tokenizers and register to be saved with NeMo Model archive
@@ -295,7 +295,7 @@ class MTEncDecModel(EncDecNLPModel):
         if self.is_emim:
             smim = torch.load(self.register_artifact(
                 "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_model))
-            if cfg.encoder_tokenizer.tokenizer_flavour == "ae":
+            if "_ae" in cfg.encoder_tokenizer.tokenizer_name:
                 # disable sampling of latent (use mean instead)
                 smim.model_type = "ae"
 

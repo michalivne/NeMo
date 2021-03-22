@@ -93,7 +93,7 @@ def get_tokenizer(
         return WordTokenizer(vocab_file=vocab_file, **special_tokens_dict)
     elif tokenizer_name == 'char':
         return CharTokenizer(vocab_file=vocab_file, **special_tokens_dict)
-    elif tokenizer_name == 'emim':
+    elif tokenizer_name.startswith('emim'):
         # FIXME: convert SentenceMIM into a package
         import sys
         sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../../../SentenceMIM"))
