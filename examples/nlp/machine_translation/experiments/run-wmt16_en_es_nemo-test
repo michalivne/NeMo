@@ -13,6 +13,7 @@ nvidia-smi \
 && apt-get install -y libsndfile1 ffmpeg \
 && pip install Cython \
 && git clone https://github.com/michalivne/NeMo.git \
+&& git checkout nmt_embeddingMIM \
 && cd NeMo/ \
 && ./reinstall.sh \
 && cd examples/nlp/machine_translation \
