@@ -17,21 +17,18 @@ nvidia-smi \
 && git checkout nmt_embeddingMIM \
 && ./reinstall.sh \
 && cd examples/nlp/machine_translation \
-&& export ds_kind="_test" \
-&& export enc_tokenizer=yttm \
-&& export dec_tokenizer=yttm \
 && python enc_dec_nmt.py \
       --config-path=conf \
       --config-name=emim_base \
-      exp_manager.name=${enc_tokenizer}-${dec_tokenizer} \
+      exp_manager.name=yttm-yttm \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
       +trainer.max_steps=150000 \
       model.beam_size=4 \
       model.max_generation_delta=5 \
       model.label_smoothing=0.1 \
-      model.encoder_tokenizer.tokenizer_name=${enc_tokenizer} \
-      model.decoder_tokenizer.tokenizer_name=${dec_tokenizer} \
+      model.encoder_tokenizer.tokenizer_name=yttm \
+      model.decoder_tokenizer.tokenizer_name=yttm \
       model.encoder_tokenizer.tokenizer_model=/data/tokenizer/tokenizer.BPE.68957.8192.model  \
       model.decoder_tokenizer.tokenizer_model=/data/tokenizer/tokenizer.BPE.68957.8192.model  \
       model.encoder.num_layers=6 \
@@ -44,14 +41,14 @@ nvidia-smi \
       model.decoder.inner_size=2048 \
       model.decoder.num_attention_heads=8 \
       model.decoder.ffn_dropout=0.1 \
-      model.train_ds.src_file_name=/data/wmt16_en_es_nemo${ds_kind}/train.clean.es.shuffled \
-      model.train_ds.tgt_file_name=/data/wmt16_en_es_nemo${ds_kind}/train.clean.en.shuffled \
+      model.train_ds.src_file_name=/data/wmt16_en_es_nemo_test/train.clean.es.shuffled \
+      model.train_ds.tgt_file_name=/data/wmt16_en_es_nemo_test/train.clean.en.shuffled \
       model.train_ds.tokens_in_batch=12500 \
-      model.validation_ds.src_file_name=/data/wmt16_en_es_nemo${ds_kind}/wmt13-en-es.ref \
-      model.validation_ds.tgt_file_name=/data/wmt16_en_es_nemo${ds_kind}/wmt13-en-es.src \
+      model.validation_ds.src_file_name=/data/wmt16_en_es_nemo_test/wmt13-en-es.ref \
+      model.validation_ds.tgt_file_name=/data/wmt16_en_es_nemo_test/wmt13-en-es.src \
       model.validation_ds.tokens_in_batch=8192 \
-      model.test_ds.src_file_name=/data/wmt16_en_es_nemo${ds_kind}/wmt13-en-es.ref \
-      model.test_ds.tgt_file_name=/data/wmt16_en_es_nemo${ds_kind}/wmt13-en-es.src \
+      model.test_ds.src_file_name=/data/wmt16_en_es_nemo_test/wmt13-en-es.ref \
+      model.test_ds.tgt_file_name=/data/wmt16_en_es_nemo_test/wmt13-en-es.src \
       model.optim.lr=0.001  \
       model.optim.sched.warmup_ratio=0.05 \
       model.train_ds.use_cache=false \
