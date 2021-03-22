@@ -61,7 +61,7 @@ EOF
 
 # launch script
 
-INSTANCE=dgx1v.32g.4.norm.beta
+INSTANCE=dgx1v.32g.2.norm.beta
 set -e
 EXPNAME=EsEn-wmt16-test
 
