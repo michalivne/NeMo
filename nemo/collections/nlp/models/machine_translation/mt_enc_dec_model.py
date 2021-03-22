@@ -107,45 +107,115 @@ class MIMEmbedder(torch.nn.Module):
         # add positional embeddings
         self.pos_emb = MIMPositionalEmbedding(emb_size=self.smim.latent_size)
 
+    # def group_ids(self, ids):
+    #     """
+    #     Collect ids into words by breaking on a delimiter (" ")
+    #     """
+    #     filtered_ids = []
+    #     specials_ids = (self.smim.voc.bot_idx, self.smim.voc.eot_idx)
+    #     # filter padding and add a delimiter after smim <BOT> and <EOT>
+    #     for i in filter(lambda x: x != self.smim.voc.pad_idx, ids):
+    #         if i == self.smim.voc.bot_idx:
+    #             filtered_ids.extend([i, self.delimiter])
+    #         elif i == self.smim.voc.eot_idx:
+    #             filtered_ids.extend([self.delimiter, i])
+    #         else:
+    #             filtered_ids.append(i)
+
+    #     # split into group based on a delimiter
+    #     return [list(y) for x, y in itertools.groupby(filtered_ids, lambda z: z == self.delimiter) if not x]
+
+    # def embed_ids(self, ids):
+    #     """
+    #     Returns word-level embeddings from sentence of character-level ids
+    #     NOT EFFICIENT!!
+    #     """
+    #     word_ids = self.group_ids(ids)
+
+    #     word_emb = []
+    #     for w in word_ids:
+    #         e = None
+    #         if len(w) == 1:
+    #             v = w[0].item()
+    #             if v in self.emb_map:
+    #                 e = self.emb.weight[self.emb_map[v]].view((1, -1))
+
+    #         if e is None:
+    #             e = self.smim.encode_latent([[self.smim.voc.bot_idx]+w+[self.smim.voc.eot_idx]])["z"]
+
+    #         word_emb.append(e)
+
+    #     return word_emb
+
+    # def forward(self, batch_ids):
+    #     """
+    #     Embed a batch of character-level ids  into a padded world-level embeddings.
+    #     """
+    #     device = batch_ids.device
+
+    #     # embed ids into world-level embedding
+    #     batch_emb = list(map(self.embed_ids, batch_ids))
+    #     # find longest sequence
+    #     max_len = max(map(len, batch_emb))
+    #     # pad sequences
+    #     pad_emb = self.emb.weight[self.emb_map[self.smim.voc.pad_idx]].view((1, -1))
+    #     padded_batch_emb = []
+    #     padded_batch_mask = []
+    #     for emb in batch_emb:
+    #         len_pad = (max_len - len(emb))
+    #         padded_batch_mask.append(torch.tensor(([1]*len(emb) + [0] * len_pad)).type_as(batch_ids))
+    #         padded_batch_emb.append(torch.cat(emb + [pad_emb] * len_pad, dim=0))
+
+    #     padded_batch_emb = torch.stack(padded_batch_emb, dim=0).to(device)
+    #     padded_batch_mask = torch.stack(padded_batch_mask, dim=0).to(device)
+
+    #     # add positional embeddings
+    #     pos_batch_emb = padded_batch_emb + self.pos_emb(torch.arange(padded_batch_emb.shape[1], device=device))
+
+    #     return pos_batch_emb.contiguous(), padded_batch_mask.contiguous()
+
     def group_ids(self, ids):
         """
         Collect ids into words by breaking on a delimiter (" ")
         """
         filtered_ids = []
         specials_ids = (self.smim.voc.bot_idx, self.smim.voc.eot_idx)
-        # filter padding and add a delimiter after smim <BOT> and <EOT>
-        for i in filter(lambda x: x != self.smim.voc.pad_idx, ids):
-            if i == self.smim.voc.bot_idx:
-                filtered_ids.extend([i, self.delimiter])
-            elif i == self.smim.voc.eot_idx:
-                filtered_ids.extend([self.delimiter, i])
-            else:
-                filtered_ids.append(i)
+        # filter <PAD>, <BOT> and <EOT>
+        filtered_ids = filter(lambda x: x not in [self.smim.voc.pad_idx,
+                                                  self.smim.voc.bot_idx, self.smim.voc.eot_idx], ids)
 
         # split into group based on a delimiter
         return [list(y) for x, y in itertools.groupby(filtered_ids, lambda z: z == self.delimiter) if not x]
 
-    def embed_ids(self, ids):
+    def embed_ids(self, batch_ids):
         """
         Returns word-level embeddings from sentence of character-level ids
         """
-        word_ids = self.group_ids(ids)
+        # group characters into words from all sentences.
+        batch_word_ids = []
+        batch_word_ind = [0]
 
-        # FIXME: not efficient to call smim for every word, better to batch
-        word_emb = []
-        for w in word_ids:
-            e = None
-            if len(w) == 1:
-                v = w[0].item()
-                if v in self.emb_map:
-                    e = self.emb.weight[self.emb_map[v]].view((1, -1))
+        for ids in batch_ids:
+            word_ids = self.group_ids(ids)
+            # collect indices of batch sample
+            batch_word_ind.append(batch_word_ind[-1]+len(word_ids))
+            batch_word_ids.extend(word_ids)
 
-            if e is None:
-                e = self.smim.encode_latent([[self.smim.voc.bot_idx]+w+[self.smim.voc.eot_idx]])["z"]
+        # add <BOT>, and <EOT> around each word
+        batch_word_ids = list(map(lambda w: [self.smim.voc.bot_idx]+w+[self.smim.voc.eot_idx], batch_word_ids))
+        # project each word to embeddigns (i.e., latent code)
+        batch_word_emb = self.smim.encode_latent(batch_word_ids)["z"]
+        # Collect words into sentences and add <BOS>, <EOS> around each sentence
+        pad_emb = [self.emb.weight[self.emb_map[self.smim.voc.pad_idx]].view((1, -1))]
+        bos_emb = [self.emb.weight[self.emb_map[self.smim.voc.bot_idx]].view((1, -1))]
+        eos_emb = [self.emb.weight[self.emb_map[self.smim.voc.eot_idx]].view((1, -1))]
 
-            word_emb.append(e)
+        batch_sen_emb = list(map(
+            lambda i0, i1: torch.cat(bos_emb+batch_word_emb[i0:i1]+eos_emb),
+            zip(batch_word_ids[:-1], batch_word_ids[1:])
+        ))
 
-        return word_emb
+        return batch_sen_emb
 
     def forward(self, batch_ids):
         """
@@ -153,8 +223,10 @@ class MIMEmbedder(torch.nn.Module):
         """
         device = batch_ids.device
 
+        import pudb; pudb.set_trace()
         # embed ids into world-level embedding
-        batch_emb = list(map(self.embed_ids, batch_ids))
+        batch_sen_emb = self.embed_ids(batch_ids)
+
         # find longest sequence
         max_len = max(map(len, batch_emb))
         # pad sequences
@@ -223,6 +295,10 @@ class MTEncDecModel(EncDecNLPModel):
         if self.is_emim:
             smim = torch.load(self.register_artifact(
                 "cfg.encoder_tokenizer.tokenizer_model", cfg.encoder_tokenizer.tokenizer_model))
+            if cfg.encoder_tokenizer.tokenizer_flavour == "ae":
+                # disable sampling of latent (use mean instead)
+                smim.model_type = "ae"
+
             # disable gradients for smim
             for param in smim.parameters():
                 param.requires_grad = False
@@ -369,7 +445,6 @@ class MTEncDecModel(EncDecNLPModel):
             else:
                 tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
 
-            # import pudb; pudb.set_trace()
             log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
         # src_hiddens = self.encoder(src, src_mask)
@@ -616,7 +691,6 @@ class MTEncDecModel(EncDecNLPModel):
             else:
                 src_hiddens = self.encoder(src, src_mask)
                 beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
-
 
             # src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
             # beam_results = self.beam_search(

@@ -72,6 +72,7 @@ model:
   encoder_tokenizer:
     tokenizer_name: yttm
     tokenizer_model: null
+    tokenizer_flavour: ae # for emim: ae, z
     vocab_size: null # vocab size for training bpe
     bpe_dropout: null
     vocab_file: null

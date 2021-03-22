@@ -1,5 +1,20 @@
 #!/usr/bin/env bash
 
+script_name=`basename $0`
+echo "${script_name} <ENC_TOKENIZER> <DEC_TOKENIZER> <GPU_NUM>\n"
+
+ENC_TOKENIZER=${1:-yttm}
+DEC_TOKENIZER=${2:-yttm}
+GPU_NUM=${3:-2}
+
+INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
+NGC_CONTAINER='nvcr.io/nvidia/pytorch:20.11-py3'
+EXP_NAME=EsEn-wmt16-test
+
+
+
+
+
 #  ngc dataset upload --source tokenizer.BPE.68957.8192.model --desc "WMT16 eng-esp bpe tokeizer" tokenizer.BPE.68957.8192.model
 # Dataset ID: 76234
 # ngc dataset upload --source wmt16_en_es_nemo_test --desc "WMT16 eng-esp test" wmt16_en_es_nemo_test
@@ -20,15 +35,16 @@ nvidia-smi \
 && python enc_dec_nmt.py \
       --config-path=conf \
       --config-name=emim_base \
-      exp_manager.name=yttm-yttm \
+      exp_manager.name=${ENC_TOKENIZER}-${DEC_TOKENIZER} \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
       +trainer.max_steps=150000 \
+      +exp_manager.exp_dir=${ENC_TOKENIZER}-${DEC_TOKENIZER} \
       model.beam_size=4 \
       model.max_generation_delta=5 \
       model.label_smoothing=0.1 \
-      model.encoder_tokenizer.tokenizer_name=yttm \
-      model.decoder_tokenizer.tokenizer_name=yttm \
+      model.encoder_tokenizer.tokenizer_name=${ENC_TOKENIZER} \
+      model.decoder_tokenizer.tokenizer_name=${DEC_TOKENIZER} \
       model.encoder_tokenizer.tokenizer_model=/data/tokenizer/tokenizer.BPE.68957.8192.model  \
       model.decoder_tokenizer.tokenizer_model=/data/tokenizer/tokenizer.BPE.68957.8192.model  \
       model.encoder.num_layers=6 \
@@ -57,10 +73,6 @@ nvidia-smi \
 EOF
 
 # launch script
-
-INSTANCE=dgx1v.32g.2.norm.beta
-EXP_NAME=EsEn-wmt16-test
-NGC_CONTAINER='nvcr.io/nvidia/pytorch:20.11-py3'
 set -e
 
 ngc batch run \
