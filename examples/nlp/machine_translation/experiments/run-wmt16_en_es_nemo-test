@@ -74,5 +74,5 @@ ngc batch run \
   --org nvidian \
   --result /results/ \
   --datasetid 76267:/data/wmt16_en_es_nemo_test/ \
-  --datasetid 76234:/data/tokenizer.BPE.68957.8192.model
+  --datasetid 76234:/data/
   --commandline "${cmd}"
