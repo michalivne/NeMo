@@ -32,8 +32,8 @@ nvidia-smi \
       model.label_smoothing=0.1 \
       model.encoder_tokenizer.tokenizer_name=${enc_tokenizer} \
       model.decoder_tokenizer.tokenizer_name=${dec_tokenizer} \
-      model.encoder_tokenizer.tokenizer_model=/data/tokenizer.BPE.68957.8192.model  \
-      model.decoder_tokenizer.tokenizer_model=/data/tokenizer.BPE.68957.8192.model  \
+      model.encoder_tokenizer.tokenizer_model=/data/tokenizer/tokenizer.BPE.68957.8192.model  \
+      model.decoder_tokenizer.tokenizer_model=/data/tokenizer/tokenizer.BPE.68957.8192.model  \
       model.encoder.num_layers=6 \
       model.encoder.hidden_size=512 \
       model.encoder.inner_size=2048 \
@@ -74,5 +74,5 @@ ngc batch run \
   --org nvidian \
   --result /results/ \
   --datasetid 76267:/data/wmt16_en_es_nemo_test/ \
-  --datasetid 76234:/data/
+  --datasetid 76234:/data/tokenizer/
   --commandline "${cmd}"
