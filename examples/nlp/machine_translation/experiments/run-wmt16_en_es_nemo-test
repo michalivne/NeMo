@@ -62,8 +62,9 @@ EOF
 # launch script
 
 INSTANCE=dgx1v.32g.2.norm.beta
+EXP_NAME=EsEn-wmt16-test
+NGC_CONTAINER='nvcr.io/nvidia/pytorch:20.11-py3'
 set -e
-EXPNAME=EsEn-wmt16-test
 
 ngc batch run \
   --name "${EXP_NAME}" \
