@@ -2,7 +2,6 @@
 
 
 # set -e
-DATAID=75154
 ngc batch run \
   --instance dgx1v.32g.1.norm \
   --ace nv-us-west-2 \
