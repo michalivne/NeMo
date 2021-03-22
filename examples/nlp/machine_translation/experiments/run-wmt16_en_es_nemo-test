@@ -15,7 +15,6 @@ nvidia-smi \
 && git clone https://github.com/michalivne/NeMo.git \
 && cd NeMo/ \
 && ./reinstall.sh \
-&& pip install pytorch_lightning==1.1.3 \
 && cd examples/nlp/machine_translation \
 && export ds_kind="_test" \
 && export enc_tokenizer=yttm \
