@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+
+# set -e
+DATAID=75154
+ngc batch run \
+  --instance dgx1v.32g.1.norm \
+  --ace nv-us-west-2 \
+  --name "eMIM" \
+  --image "nvcr.io/nvidia/pytorch:20.11-py3" \
+  --result /result \
+  --org nvidian \
+  --datasetid $DATAID:/data/words-all-eng_esp \
+  --shell \
+  --total-runtime 4h

@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+# set -e
+
+script_name=`basename $0`
+echo "${script_name} <LATENT SIZE> <EMBEDDING_SIZE> <LAYERS> <GPU MEM> <GPU NUMBER>"
+
+# control variables
+LATENT_SIZE=${1:-256}
+EMB_SIZE=${2:-32}
+LAYERS=${3:-1}
+GPU_MEM=${4:-32g}
+GPU_NUM=${5:-4}
+
+EXP_NAME="emim-eng_esp-z${LATENT_SIZE}-e${EMB_SIZE}-l${LAYERS}"
+INSTANCE="dgx1v.${GPU_MEM}.${GPU_NUM}.norm"
+NGC_CONTAINER='nvcr.io/nvidia/pytorch:20.11-py3'
+DATAID=75154
+
+echo "Experiment = ${EXP_NAME}"
+
+# command
+
+read -d '' cmd <<EOF
+nvidia-smi \
+&& apt-get update \
+&& git clone https://michalivne:dc98fa7884866b3438fae35cf99f0f86b8b6cf25@github.com/seraphlabs-ca/SentenceMIM.git \
+&& cd SentenceMIM \
+&& pip install -r requirements.txt \
+&& python ./train.py \
+    --output_path /results \
+    --data_dir /data \
+    --dataset words-all-eng_esp \
+    --voc_type char \
+    --transforms_desc 'imp:uns' \
+    --transforms_p 0.1 \
+    --latent_size ${LATENT_SIZE} \
+    --hidden_size -1 \
+    --emb_size ${EMB_SIZE} \
+    --layers ${LAYERS} \
+    --model_type mim \
+    --model_flavour imp-q_x:imp-p_z \
+    --early_stopping_epochs 100 \
+    --batch_size 300 \
+    --experiment_path results \
+    --experiment_tag tasks \
+    --world_size -1
+EOF
+
+# launch script
+
+ngc batch run \
+  --name "${EXP_NAME}" \
+  --preempt RUNONCE \
+  --image "${NGC_CONTAINER}" \
+  --ace nv-us-west-2 \
+  --instance "${INSTANCE}" \
+  --org nvidian \
+  --result /results/ \
+  --datasetid $DATAID:/data/words-all-eng_esp/ \
+  --commandline "${cmd}"
