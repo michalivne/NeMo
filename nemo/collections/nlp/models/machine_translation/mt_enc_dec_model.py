@@ -179,10 +179,9 @@ class MIMEmbedder(torch.nn.Module):
         Collect ids into words by breaking on a delimiter (" ")
         """
         filtered_ids = []
-        specials_ids = (self.smim.voc.bot_idx, self.smim.voc.eot_idx)
+        specials_ids = (self.smim.voc.pad_idx, self.smim.voc.bot_idx, self.smim.voc.eot_idx)
         # filter <PAD>, <BOT> and <EOT>
-        filtered_ids = filter(lambda x: x not in [self.smim.voc.pad_idx,
-                                                  self.smim.voc.bot_idx, self.smim.voc.eot_idx], ids)
+        filtered_ids = filter(lambda x: x not in specials_ids, ids)
 
         # split into group based on a delimiter
         return [list(y) for x, y in itertools.groupby(filtered_ids, lambda z: z == self.delimiter) if not x]
@@ -202,16 +201,18 @@ class MIMEmbedder(torch.nn.Module):
             batch_word_ids.extend(word_ids)
 
         # add <BOT>, and <EOT> around each word
-        batch_word_ids = list(map(lambda w: [self.smim.voc.bot_idx]+w+[self.smim.voc.eot_idx], batch_word_ids))
+        bot_idx = [torch.tensor(self.smim.voc.bot_idx).type_as(batch_ids[0, 0])]
+        eot_idx = [torch.tensor(self.smim.voc.eot_idx).type_as(batch_ids[0, 0])]
+        batch_word_ids = list(map(lambda w: bot_idx+w+eot_idx, batch_word_ids))
         # project each word to embeddigns (i.e., latent code)
         batch_word_emb = self.smim.encode_latent(batch_word_ids)["z"]
         # Collect words into sentences and add <BOS>, <EOS> around each sentence
-        pad_emb = [self.emb.weight[self.emb_map[self.smim.voc.pad_idx]].view((1, -1))]
-        bos_emb = [self.emb.weight[self.emb_map[self.smim.voc.bot_idx]].view((1, -1))]
-        eos_emb = [self.emb.weight[self.emb_map[self.smim.voc.eot_idx]].view((1, -1))]
+        pad_emb = self.emb.weight[self.emb_map[self.smim.voc.pad_idx]].view((1, -1))
+        bos_emb = self.emb.weight[self.emb_map[self.smim.voc.bot_idx]].view((1, -1))
+        eos_emb = self.emb.weight[self.emb_map[self.smim.voc.eot_idx]].view((1, -1))
 
         batch_sen_emb = list(map(
-            lambda i0, i1: torch.cat(bos_emb+batch_word_emb[i0:i1]+eos_emb),
+            lambda i0, i1: torch.cat((bos_emb, batch_word_emb[i0:i1], eos_emb)),
             zip(batch_word_ids[:-1], batch_word_ids[1:])
         ))
 
