@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
 script_name=`basename $0`
-echo "${script_name} <ENC_TOKENIZER> <DEC_TOKENIZER> <GPU_NUM> \n"
+echo "${script_name} <SentenceMIM API key> <ENC_TOKENIZER> <DEC_TOKENIZER> <GPU_NUM> \n"
 
-ENC_TOKENIZER=${1:-yttm}
-DEC_TOKENIZER=${2:-yttm}
-GPU_NUM=${3:-2}
+GITHUB_KEY=$1
+ENC_TOKENIZER=${2:-yttm}
+DEC_TOKENIZER=${3:-yttm}
+GPU_NUM=${4:-2}
 
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:20.11-py3'
@@ -27,6 +28,7 @@ nvidia-smi \
 && apt-get update \
 && apt-get install -y libsndfile1 ffmpeg \
 && pip install Cython \
+&& git clone https://michalivne:${GITHUB_KEY}@github.com/seraphlabs-ca/SentenceMIM.git \
 && git clone https://github.com/michalivne/NeMo.git \
 && cd NeMo/ \
 && git checkout nmt_embeddingMIM \
