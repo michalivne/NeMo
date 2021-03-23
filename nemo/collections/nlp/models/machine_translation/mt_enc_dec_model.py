@@ -224,20 +224,19 @@ class MIMEmbedder(torch.nn.Module):
         """
         device = batch_ids.device
 
-        import pudb; pudb.set_trace()
-        # embed ids into world-level embedding
+        # embed ids into world-level embedding per sentence
         batch_sen_emb = self.embed_ids(batch_ids)
 
         # find longest sequence
-        max_len = max(map(len, batch_emb))
+        max_len = max(map(len, batch_sen_emb))
         # pad sequences
         pad_emb = self.emb.weight[self.emb_map[self.smim.voc.pad_idx]].view((1, -1))
         padded_batch_emb = []
         padded_batch_mask = []
-        for emb in batch_emb:
+        for emb in batch_sen_emb:
             len_pad = (max_len - len(emb))
             padded_batch_mask.append(torch.tensor(([1]*len(emb) + [0] * len_pad)).type_as(batch_ids))
-            padded_batch_emb.append(torch.cat(emb + [pad_emb] * len_pad, dim=0))
+            padded_batch_emb.append(torch.cat((emb,) + (pad_emb,) * len_pad, dim=0))
 
         padded_batch_emb = torch.stack(padded_batch_emb, dim=0).to(device)
         padded_batch_mask = torch.stack(padded_batch_mask, dim=0).to(device)
