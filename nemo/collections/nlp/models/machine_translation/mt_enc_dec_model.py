@@ -205,6 +205,7 @@ class MIMEmbedder(torch.nn.Module):
         eot_idx = [torch.tensor(self.smim.voc.eot_idx).type_as(batch_ids[0, 0])]
         batch_word_ids = list(map(lambda w: bot_idx+w+eot_idx, batch_word_ids))
         # project each word to embeddigns (i.e., latent code)
+        print("*******{l}".format(l=len(batch_word_ids)))
         batch_word_emb = self.smim.encode_latent(batch_word_ids)["z"]
         # Collect words into sentences and add <BOS>, <EOS> around each sentence
         pad_emb = self.emb.weight[self.emb_map[self.smim.voc.pad_idx]].view((1, -1))
