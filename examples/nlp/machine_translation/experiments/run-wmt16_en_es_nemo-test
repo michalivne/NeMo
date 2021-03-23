@@ -20,6 +20,8 @@ EXP_NAME=EsEn-wmt16-test
 # Dataset ID: 76234
 # ngc dataset upload --source wmt16_en_es_nemo_test --desc "WMT16 eng-esp test" wmt16_en_es_nemo_test
 # Dataset ID: 76267
+# ngc dataset upload --source smim.1796586.model --desc "smim.1796586.model" smim.1796586.model
+# Dataset ID: 76327
 
 # command
 
@@ -41,7 +43,7 @@ nvidia-smi \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
       +trainer.max_steps=150000 \
-      +exp_manager.exp_dir=${ENC_TOKENIZER}-${DEC_TOKENIZER} \
+      +exp_manager.exp_dir=/results/${ENC_TOKENIZER}-${DEC_TOKENIZER} \
       model.beam_size=4 \
       model.max_generation_delta=5 \
       model.label_smoothing=0.1 \
@@ -87,4 +89,5 @@ ngc batch run \
   --result /results/ \
   --datasetid 76267:/data/wmt16_en_es_nemo_test/ \
   --datasetid 76234:/data/tokenizer/ \
+  --datasetid 76327:/data/tokenizer/ \
   --commandline "${cmd}"
