@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 script_name=`basename $0`
-echo "${script_name} <ENC_TOKENIZER> <DEC_TOKENIZER> <GPU_NUM>\n"
+echo "${script_name} <ENC_TOKENIZER> <DEC_TOKENIZER> <GPU_NUM> \n"
 
 ENC_TOKENIZER=${1:-yttm}
 DEC_TOKENIZER=${2:-yttm}
