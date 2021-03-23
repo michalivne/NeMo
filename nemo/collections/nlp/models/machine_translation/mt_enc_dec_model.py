@@ -213,7 +213,7 @@ class MIMEmbedder(torch.nn.Module):
 
         batch_sen_emb = list(map(
             lambda i: torch.cat((bos_emb, batch_word_emb[i[0]:i[1]], eos_emb)),
-            zip(batch_word_ids[:-1], batch_word_ids[1:])
+            zip(batch_word_ind[:-1], batch_word_ind[1:])
         ))
 
         return batch_sen_emb
