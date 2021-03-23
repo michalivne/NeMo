@@ -212,7 +212,7 @@ class MIMEmbedder(torch.nn.Module):
         eos_emb = self.emb.weight[self.emb_map[self.smim.voc.eot_idx]].view((1, -1))
 
         batch_sen_emb = list(map(
-            lambda i0, i1: torch.cat((bos_emb, batch_word_emb[i0:i1], eos_emb)),
+            lambda i: torch.cat((bos_emb, batch_word_emb[i[0]:i[1]], eos_emb)),
             zip(batch_word_ids[:-1], batch_word_ids[1:])
         ))
 
