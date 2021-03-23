@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 script_name=`basename $0`
-echo "${script_name} <SentenceMIM API key> <ENC_TOKENIZER> <DEC_TOKENIZER> <GPU_NUM> \n"
+echo "${script_name} <SentenceMIM API key> <ENC_TOKENIZER> <DEC_TOKENIZER> <GPU_NUM>"
 
 GITHUB_KEY=$1
 ENC_TOKENIZER=${2:-yttm}
