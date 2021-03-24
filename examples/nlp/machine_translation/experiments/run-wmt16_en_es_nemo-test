@@ -12,7 +12,7 @@ GPU_NUM=${6:-2}
 
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:20.11-py3'
-EXP_NAME=EsEn-wmt16-test
+EXP_NAME=EsEn-wmt16-test_${ENC_TOKENIZER}-${DEC_TOKENIZER}
 
 
 
