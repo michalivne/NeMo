@@ -19,10 +19,10 @@ EXP_NAME=EsEn-wmt16-test
 # /data/tokenizer/tokenizer.BPE.68957.8192.model
 # /data/smim/smim.1796586.model
 
-#  ngc dataset upload --source tokenizer.BPE.68957.8192.model --desc "WMT16 eng-esp bpe tokeizer" tokenizer.BPE.68957.8192.model
-# Dataset ID: 76234
 # ngc dataset upload --source wmt16_en_es_nemo_test --desc "WMT16 eng-esp test" wmt16_en_es_nemo_test
 # Dataset ID: 76267
+#  ngc dataset upload --source tokenizer.BPE.68957.8192.model --desc "WMT16 eng-esp bpe tokeizer" tokenizer.BPE.68957.8192.model
+# Dataset ID: 76234
 # ngc dataset upload --source smim.1796586.model --desc "smim.1796586.model" smim.1796586.model
 # Dataset ID: 76327
 

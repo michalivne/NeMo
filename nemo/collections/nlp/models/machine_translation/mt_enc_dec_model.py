@@ -206,10 +206,11 @@ class MIMEmbedder(torch.nn.Module):
         batch_word_ids = list(map(lambda w: bot_idx+w+eot_idx, batch_word_ids))
         # project each word to embeddigns (i.e., latent code)
         batch_word_emb = []
-        # embed 500 words at a time (restrict memory usage)
-        # FIXME: set 500 as a parameter
-        for i in range(0, len(batch_word_ids), 500):
-            batch_word_emb.append(self.smim.encode_latent(batch_word_ids[i:(i+500)])["z"])
+        # embed N words at a time (restrict memory usage)
+        # FIXME: set N as a parameter
+        N = 100
+        for i in range(0, len(batch_word_ids), N):
+            batch_word_emb.append(self.smim.encode_latent(batch_word_ids[i:(i+N)])["z"])
         batch_word_emb = torch.cat(batch_word_emb, dim=0)
 
         # Collect words into sentences and add <BOS>, <EOS> around each sentence
