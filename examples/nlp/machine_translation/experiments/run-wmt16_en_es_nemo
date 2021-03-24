@@ -88,6 +88,7 @@ nvidia-smi \
 EOF
 
 # launch script
+# --datasetid 76378:/data/wmt16_en_es_nemo-preproc/ \
 set -e
 
 ngc batch run \
@@ -99,7 +100,7 @@ ngc batch run \
   --org nvidian \
   --result /results/ \
   --datasetid 68957:/data/wmt16_en_es_nemo/ \
-  --datasetid 76378:/data/wmt16_en_es_nemo-preproc/ \
   --datasetid 76234:/data/tokenizer/ \
   --datasetid 76327:/data/smim/ \
   --commandline "${cmd}"
+
