@@ -208,7 +208,7 @@ class MIMEmbedder(torch.nn.Module):
         batch_word_emb = []
         # embed N words at a time (restrict memory usage)
         # FIXME: set N as a parameter
-        N = 100
+        N = 10
         for i in range(0, len(batch_word_ids), N):
             batch_word_emb.append(self.smim.encode_latent(batch_word_ids[i:(i+N)])["z"])
         batch_word_emb = torch.cat(batch_word_emb, dim=0)
