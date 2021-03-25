@@ -186,7 +186,7 @@ class MIMEmbedder(torch.nn.Module):
         # split into group based on a delimiter
         return [list(y) for x, y in itertools.groupby(filtered_ids, lambda z: z == self.delimiter) if not x]
 
-    def embed_ids(self, batch_ids):
+    def embed_ids(self, batch_ids, return_words=False):
         """
         Returns word-level embeddings from sentence of character-level ids
         """
@@ -223,16 +223,22 @@ class MIMEmbedder(torch.nn.Module):
             zip(batch_word_ind[:-1], batch_word_ind[1:])
         ))
 
-        return batch_sen_emb
+        if return_words:
+            return batch_sen_emb, batch_word_ids, batch_word_ind
+        else:
+            return batch_sen_emb
 
-    def forward(self, batch_ids):
+    def forward(self, batch_ids, return_words=False):
         """
         Embed a batch of character-level ids  into a padded world-level embeddings.
         """
         device = batch_ids.device
 
         # embed ids into world-level embedding per sentence
-        batch_sen_emb = self.embed_ids(batch_ids)
+        if return_words:
+            batch_sen_emb, batch_word_ids, batch_word_ind = self.embed_ids(batch_ids, return_words=return_words)
+        else:
+            batch_sen_emb = self.embed_ids(batch_ids, return_words=return_words)
 
         # find longest sequence
         max_len = max(map(len, batch_sen_emb))
@@ -251,9 +257,12 @@ class MIMEmbedder(torch.nn.Module):
         # add positional embeddings
         pos_batch_emb = padded_batch_emb + self.pos_emb(torch.arange(padded_batch_emb.shape[1], device=device))
 
-        return pos_batch_emb.contiguous(), padded_batch_mask.contiguous()
+        if return_words:
+            return pos_batch_emb.contiguous(), padded_batch_mask.contiguous(), batch_word_ids, batch_word_ind
+        else:
+            return pos_batch_emb.contiguous(), padded_batch_mask.contiguous()
 
-    def log_probs(self, batch_emb, batch_ids, sample=False):
+    def log_probs(self, batch_emb, batch_ids, batch_word_ids, batch_word_ind, sample=False):
         """
         Return
         """
@@ -446,14 +455,14 @@ class MTEncDecModel(EncDecNLPModel):
         if self.is_emim_decoder:
             # split ids into word-level embeddings
             with torch.no_grad():
-                words_tgt, words_tgt_mask = self.emim(tgt)
+                words_tgt, words_tgt_mask, batch_tgt_word_ids, batch_tdt_word_ind = self.emim(tgt, return_words=True)
 
             if self.is_emim_encoder:
                 tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, words_src_mask)
             else:
                 tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, src_mask)
 
-            self.emim.log_probs(tgt_hiddens, tgt)
+            self.emim.log_probs(tgt_hiddens, tgt, batch_tgt_word_ids, batch_tdt_word_ind)
             import pudb; pudb.set_trace()
         else:
             if self.is_emim_encoder:
