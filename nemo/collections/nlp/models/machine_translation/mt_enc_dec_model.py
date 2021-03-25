@@ -446,6 +446,8 @@ class MTEncDecModel(EncDecNLPModel):
                 tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, words_src_mask)
             else:
                 tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, src_mask)
+
+            import pudb; pudb.set_trace()
         else:
             if self.is_emim_encoder:
                 tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, words_src_mask)
