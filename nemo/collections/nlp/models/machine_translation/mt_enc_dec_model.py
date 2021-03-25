@@ -257,7 +257,7 @@ class MIMEmbedder(torch.nn.Module):
         """
         Return
         """
-        pudb
+        import pudb; pudb.set_trace()
 
 
 class MTEncDecModel(EncDecNLPModel):
@@ -462,7 +462,6 @@ class MTEncDecModel(EncDecNLPModel):
                 tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
 
             log_probs = self.log_softmax(hidden_states=tgt_hiddens)
-            import pudb; pudb.set_trace()
 
         # src_hiddens = self.encoder(src, src_mask)
         # tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, src_mask)
