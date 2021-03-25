@@ -253,11 +253,11 @@ class MIMEmbedder(torch.nn.Module):
 
         return pos_batch_emb.contiguous(), padded_batch_mask.contiguous()
 
-    def log_probs(self, emb, sample=False):
+    def log_probs(self, batch_emb, batch_ids, sample=False):
         """
         Return
         """
-        pass
+        pudb
 
 
 class MTEncDecModel(EncDecNLPModel):
@@ -453,6 +453,7 @@ class MTEncDecModel(EncDecNLPModel):
             else:
                 tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, src_mask)
 
+            self.emim.log_probs(tgt_hiddens, tgt)
             import pudb; pudb.set_trace()
         else:
             if self.is_emim_encoder:
