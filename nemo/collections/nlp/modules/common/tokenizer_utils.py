@@ -90,9 +90,9 @@ def get_tokenizer(
     elif tokenizer_name == 'yttm':
         return YouTokenToMeTokenizer(model_path=tokenizer_model, bpe_dropout=bpe_dropout)
     elif tokenizer_name == 'word':
-        return WordTokenizer(vocab_file=vocab_file, **special_tokens_dict)
+        return WordTokenizer(vocab_file=vocab_file or tokenizer_model, **special_tokens_dict)
     elif tokenizer_name == 'char':
-        return CharTokenizer(vocab_file=vocab_file, **special_tokens_dict)
+        return CharTokenizer(vocab_file=vocab_file or tokenizer_model, **special_tokens_dict)
     elif tokenizer_name.startswith('emim'):
         # FIXME: convert SentenceMIM into a package
         import sys
