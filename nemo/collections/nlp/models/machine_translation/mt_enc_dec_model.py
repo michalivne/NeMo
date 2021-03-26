@@ -281,13 +281,14 @@ class MIMEmbedder(torch.nn.Module):
         # remove log_prob for <BOT>, and <EOT> per word, add null log_prob for ' ' and non-null log_prob for <EOS>
         # collect word log_prob
         sen_log_probs = []
-        eos_log_prob =
         for i0, i1 in zip(batch_word_ind[:-1], batch_word_ind[1:]):
             # collect word log_prob into sentences
             cur_sen_log_probs = []
-            for word_emb in word_log_probs[i0, i1]:
+            for word_log_probs in word_log_probs[i0, i1]:
                 # remove log_prob for <BOT>, and <EOT> per word
-                cur_sen_log_probs.append(word_emb[1:, -1])
+                cur_sen_log_probs.append(word_log_probs[1:-1])
+            # add log_prob for <EOT> per sentence
+            cur_sen_log_probs.append(word_log_probs[-1:])
 
 
 
