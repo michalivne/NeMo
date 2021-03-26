@@ -274,8 +274,20 @@ class MIMEmbedder(torch.nn.Module):
         batch_word_mask[:, :-1] = batch_word_mask[:, :-1].masked_fill((batch_emb_mask[:, :-1] - batch_emb_mask[:, 1:]).to(torch.bool), 0)
         batch_word_mask = batch_word_mask.reshape((-1,)).to(torch.bool)
 
+        # map each word embedding
         batch_word_emb = batch_emb.reshape((-1, batch_emb.shape[2]))[batch_word_mask]
-        log_probs = self.smim.decode_latent(batch_word_ids, z=batch_word_emb)["log_prob_x"]
+        word_log_probs = self.smim.decode_latent(batch_word_ids, z=batch_word_emb)["score_x_given_z"]
+
+        # remove log_prob for <BOT>, and <EOT> per word, add null log_prob for ' ' and non-null log_prob for <EOS>
+        # collect word log_prob
+        sen_log_probs = []
+        eos_log_prob =
+        for i0, i1 in zip(batch_word_ind[:-1], batch_word_ind[1:]):
+            # collect word log_prob into sentences
+            cur_sen_log_probs = []
+            for word_emb in word_log_probs[i0, i1]:
+                # remove log_prob for <BOT>, and <EOT> per word
+                cur_sen_log_probs.append(word_emb[1:, -1])
 
 
 
@@ -519,6 +531,7 @@ class MTEncDecModel(EncDecNLPModel):
         log_probs = self(src_ids, src_mask, tgt_ids, tgt_mask)
 
         # this will run encoder twice -- TODO: potentially fix
+        import pudb; pudb.set_trace()
         _, translations = self.batch_translate(src=src_ids, src_mask=src_mask)
         eval_loss = self.loss_fn(log_probs=log_probs, labels=labels)
         self.eval_loss(
