@@ -532,7 +532,6 @@ class MTEncDecModel(EncDecNLPModel):
         log_probs = self(src_ids, src_mask, tgt_ids, tgt_mask)
 
         # this will run encoder twice -- TODO: potentially fix
-        import pudb; pudb.set_trace()
         _, translations = self.batch_translate(src=src_ids, src_mask=src_mask)
         eval_loss = self.loss_fn(log_probs=log_probs, labels=labels)
         self.eval_loss(
