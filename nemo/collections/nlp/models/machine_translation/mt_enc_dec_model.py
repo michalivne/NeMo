@@ -462,7 +462,7 @@ class MTEncDecModel(EncDecNLPModel):
             else:
                 tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, src_mask)
 
-            self.emim.log_probs(tgt_hiddens, tgt, batch_tgt_word_ids, batch_tdt_word_ind)
+            log_probs = self.emim.log_probs(tgt_hiddens, tgt, batch_tgt_word_ids, batch_tdt_word_ind)
             import pudb; pudb.set_trace()
         else:
             if self.is_emim_encoder:
