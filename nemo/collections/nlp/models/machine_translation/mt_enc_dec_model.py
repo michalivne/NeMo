@@ -267,6 +267,16 @@ class MIMEmbedder(torch.nn.Module):
         Return
         """
         import pudb; pudb.set_trace()
+        # ignore <BOS>, and <EOS>
+        batch_word_mask = batch_emb_mask.clone()
+        batch_word_mask[:, 0] = 0
+        batch_word_mask[:, :-1][(batch_emb_mask[:, :-1] - batch_emb_mask[:, 1:]).to(torch.bool)] = 0
+        batch_word_mask = batch_emb_mask[:, 1:].reshape((-1,))
+        batch_word_mask[(batch_emb_mask[:, :-1] - batch_emb_mask[:, 1:]).flatten().to(torch.bool)] = 0
+        batch_word_mask = batch_word_mask.type(torch.bool)
+
+        batch_word_emb = batch_emb.reshape((-1, batch_emb.shape[2]))[batch_word_mask]
+
 
 
 class MTEncDecModel(EncDecNLPModel):
