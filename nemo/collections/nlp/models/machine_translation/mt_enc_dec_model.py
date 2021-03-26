@@ -266,6 +266,7 @@ class MIMEmbedder(torch.nn.Module):
         """
         Return
         """
+        # TODO: FINISH ME
         import pudb; pudb.set_trace()
         # ignore <BOS>, and <EOS>
         batch_word_mask = batch_emb_mask.clone()
