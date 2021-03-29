@@ -9,6 +9,7 @@ DEC_TOKENIZER=${3:-yttm}
 ENC_MODEL=${4:-/raid/shared_tokenizer.32000.BPE.model}
 DEC_MODEL=${5:-/raid/shared_tokenizer.32000.BPE.model}
 GPU_NUM=${6:-8}
+LABEL_SMOOTHING=${7:-0.1}
 
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:20.11-py3'
@@ -71,7 +72,7 @@ nvidia-smi \
       +exp_manager.checkpoint_callback_params.save_top_k=10 \
       model.beam_size=4 \
       model.max_generation_delta=5 \
-      model.label_smoothing=0.1 \
+      model.label_smoothing=${LABEL_SMOOTHING} \
       +model.src_language=es \
       +model.tgt_language=en \
       model.encoder.hidden_size=1024 \
