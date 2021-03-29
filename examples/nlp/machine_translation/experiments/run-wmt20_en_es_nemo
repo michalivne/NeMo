@@ -8,7 +8,7 @@ ENC_TOKENIZER=${2:-yttm}
 DEC_TOKENIZER=${3:-yttm}
 ENC_MODEL=${4:-/raid/shared_tokenizer.32000.BPE.model}
 DEC_MODEL=${5:-/raid/shared_tokenizer.32000.BPE.model}
-GPU_NUM=${8:-2}
+GPU_NUM=${6:-8}
 
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:20.11-py3'
