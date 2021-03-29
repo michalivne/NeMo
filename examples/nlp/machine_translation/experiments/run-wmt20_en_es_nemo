@@ -106,7 +106,6 @@ nvidia-smi \
 EOF
 
 # launch script
-# --datasetid 76378:/data/wmt16_en_es_nemo-preproc/ \
 set -e
 
 ngc batch run \
