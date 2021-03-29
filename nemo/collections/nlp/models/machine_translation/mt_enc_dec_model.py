@@ -262,22 +262,39 @@ class MIMEmbedder(torch.nn.Module):
         else:
             return pos_batch_emb.contiguous(), padded_batch_mask.contiguous()
 
-    def log_probs(self, batch_emb, batch_emb_mask, batch_ids, batch_word_ids, batch_word_ind, sample=False):
+    def log_probs(self, batch_hidden, batch_hidden_mask, batch_ids, batch_word_ids, batch_word_ind, sample=False):
         """
         Return
         """
         # TODO: FINISH ME
-        import pudb; pudb.set_trace()
+        import pudb
+        pudb.set_trace()
+        # ignore last prediction
+        log_probs = 0
+        batch_word_hidden = batch_hidden.reshape(
+            (-1, batch_hidden.shape[2]))[batch_hidden_mask.flatten().type(torch.bool)]
+        # batch_word_ind does not account for <EOS> word
+        j = 0
+        eos_idx = [torch.tensor(self.smim.voc.eot_idx).type_as(batch_ids[0, 0])]
+        for i0, i1 in zip(batch_word_ind[:-1], batch_word_ind[1:]):
+            # hidden includes one extra prediction
+            sen_hidden = batch_word_hidden[i0+j:i1+j+1]
+            sen_word_ids = batch_word_ids[i0:i1]
+
+            j += 2
+
+        ####################
         # ignore <BOS>, and <EOS>
-        batch_word_mask = batch_emb_mask.clone()
+        batch_word_mask = batch_hidden_mask.clone()
         batch_word_mask[:, 0] = 0
         batch_word_mask[:, -1] = 0
-        batch_word_mask[:, :-1] = batch_word_mask[:, :-1].masked_fill((batch_emb_mask[:, :-1] - batch_emb_mask[:, 1:]).to(torch.bool), 0)
+        batch_word_mask[:, :-1] = batch_word_mask[:, :-1].masked_fill(
+            (batch_hidden_mask[:, :-1] - batch_hidden_mask[:, 1:]).to(torch.bool), 0)
         batch_word_mask = batch_word_mask.reshape((-1,)).to(torch.bool)
 
-        # map each word embedding
-        batch_word_emb = batch_emb.reshape((-1, batch_emb.shape[2]))[batch_word_mask]
-        word_log_probs = self.smim.decode_latent(batch_word_ids, z=batch_word_emb)["score_x_given_z"]
+        # map each word hidden
+        batch_word_hidden = batch_hidden.reshape((-1, batch_hidden.shape[2]))[batch_word_mask]
+        word_log_probs = self.smim.decode_latent(batch_word_ids, z=batch_word_hidden)["score_x_given_z"]
 
         # remove log_prob for <BOT>, and <EOT> per word, add null log_prob for ' ' and non-null log_prob for <EOS>
         # collect word log_prob
@@ -290,7 +307,6 @@ class MIMEmbedder(torch.nn.Module):
                 cur_sen_log_probs.append(word_log_probs[1:-1])
             # add log_prob for <EOT> per sentence
             cur_sen_log_probs.append(word_log_probs[-1:])
-
 
 
 class MTEncDecModel(EncDecNLPModel):
@@ -487,7 +503,8 @@ class MTEncDecModel(EncDecNLPModel):
                 tgt_hiddens = self.decoder(words_tgt, words_tgt_mask, src_hiddens, src_mask)
 
             log_probs = self.emim.log_probs(tgt_hiddens, words_tgt_mask, tgt, batch_tgt_word_ids, batch_tdt_word_ind)
-            import pudb; pudb.set_trace()
+            import pudb
+            pudb.set_trace()
         else:
             if self.is_emim_encoder:
                 tgt_hiddens = self.decoder(tgt, tgt_mask, src_hiddens, words_src_mask)
