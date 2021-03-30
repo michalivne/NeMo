@@ -49,8 +49,8 @@ nvidia-smi \
 && cd examples/nlp/machine_translation \
 && cp -R /data/ds/backtranslated/train.clean.en-es.backtranslated.es-en.tok.*.shuffled /raid/ \
 && cp -R /data/ds/backtranslated/shared_tokenizer.32000.BPE.model /raid/ \
-&& cp -R /data/ds/parallel/newstest2012-en-es.clean.tok.* /raid/ \
-&& cp -R /data/ds/parallel/newstest2013-en-es.clean.tok.* /raid/ \
+&& cp -R /data/ds/parallel/newstest2012-es-en.clean.tok.* /raid/ \
+&& cp -R /data/ds/parallel/newstest2013-es-en.clean.tok.* /raid/ \
 && cp -R /data/smim/smim.1796586.model /raid/ \
 && python enc_dec_nmt.py \
       --config-path=conf \
