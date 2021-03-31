@@ -232,6 +232,7 @@ class MIMEmbedder(torch.nn.Module):
         """
         Embed a batch of character-level ids  into a padded world-level embeddings.
         """
+        # FIXME: make sure that emb and mask have the same length
         device = batch_ids.device
 
         # embed ids into world-level embedding per sentence
