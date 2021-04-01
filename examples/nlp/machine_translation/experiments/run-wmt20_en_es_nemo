@@ -14,9 +14,11 @@ LABEL_SMOOTHING=${7:-0.1}
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:20.11-py3'
 EXP_NAME=en_es_wmt20-${ENC_TOKENIZER}_${DEC_TOKENIZER}
+EXP_NAME_NGC="${EXP_NAME} ml-model.aayn-emim"
+
 
 WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
-PROJECT=en_es_wmt20-${ENC_TOKENIZER}_${DEC_TOKENIZER}
+PROJECT=${EXP_NAME}
 
 
 
@@ -110,7 +112,7 @@ EOF
 set -e
 
 ngc batch run \
-  --name "${EXP_NAME}" \
+  --name "${EXP_NAME_NGC}" \
   --preempt RUNONCE \
   --image "${NGC_CONTAINER}" \
   --ace nv-us-west-2 \
