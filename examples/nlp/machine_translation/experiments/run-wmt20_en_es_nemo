@@ -102,6 +102,7 @@ nvidia-smi \
       model.test_ds.src_file_name=/raid/newstest2013-es-en.clean.tok.src \
       model.test_ds.tgt_file_name=/raid/newstest2013-es-en.clean.tok.ref \
       model.train_ds.use_tarred_dataset=true \
+      do_training=true \
       model.preproc_out_dir=/raid/preproc \
       trainer.amp_level=O0 \
       trainer.precision=32 \
