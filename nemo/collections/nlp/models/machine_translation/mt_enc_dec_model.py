@@ -35,7 +35,7 @@ from nemo.collections.common.tokenizers.en_ja_tokenizers import EnJaProcessor
 from nemo.collections.common.tokenizers.moses_tokenizers import MosesProcessor
 from nemo.collections.nlp.data import TarredTranslationDataset, TranslationDataset
 from nemo.collections.nlp.models.enc_dec_nlp_model import EncDecNLPModel
-from nemo.collections.nlp.models.machine_translation.mt_enc_dec_config import MTEncDecModelConfig
+from nemo.collections.nlp.models.machine_translation.mt_enc_dec_config import MTEncDecModelConfig, MTMIMModelConfig
 from nemo.collections.nlp.modules.common import TokenClassifier
 from nemo.collections.nlp.modules.common.lm_utils import get_transformer
 from nemo.collections.nlp.modules.common.tokenizer_utils import get_nmt_tokenizer
@@ -405,14 +405,14 @@ class MTEncDecModel(EncDecNLPModel):
     def batch_translate(
         self, src: torch.LongTensor, src_mask: torch.LongTensor,
     ):
-        """	
-        Translates a minibatch of inputs from source language to target language.	
-        Args:	
-            src: minibatch of inputs in the src language (batch x seq_len)	
-            src_mask: mask tensor indicating elements to be ignored (batch x seq_len)	
-        Returns:	
-            translations: a list strings containing detokenized translations	
-            inputs: a list of string containing detokenized inputs	
+        """
+        Translates a minibatch of inputs from source language to target language.
+        Args:
+            src: minibatch of inputs in the src language (batch x seq_len)
+            src_mask: mask tensor indicating elements to be ignored (batch x seq_len)
+        Returns:
+            translations: a list strings containing detokenized translations
+            inputs: a list of string containing detokenized inputs
         """
         mode = self.training
         try:
@@ -556,3 +556,12 @@ class MTEncDecModel(EncDecNLPModel):
         result.append(model)
 
         return result
+
+
+class MTMIMModel(MTEncDecModel):
+    """
+    translationMIM machine translation model trained with MIM learning.
+    """
+
+    def __init__(self, cfg: MTMIMModelConfig, trainer: Trainer = None):
+        pass

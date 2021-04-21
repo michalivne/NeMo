@@ -99,7 +99,6 @@ class MTEncDecModelConfig(EncDecNLPModelConfig):
     )
     optim: Optional[OptimConfig] = MTOptimConfig()
 
-
 @dataclass
 class AAYNBaseConfig(MTEncDecModelConfig):
 
@@ -131,3 +130,7 @@ class AAYNBaseConfig(MTEncDecModelConfig):
         attn_score_dropout=0.1,
         attn_layer_dropout=0.1,
     )
+
+@dataclass
+class MTMIMModelConfig(AAYNBaseConfig):
+    model_type: str = 'mim'

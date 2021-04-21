@@ -10,7 +10,7 @@ model:
   preproc_out_dir: null # path to store data preprocessing outputs
   src_language: 'en'
   tgt_language: 'de'
-  model_type: 'mim'
+  model_type: 'mim' # support mim, ae, vae
 
   train_ds:
     src_file_name: null
