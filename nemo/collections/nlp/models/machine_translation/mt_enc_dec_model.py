@@ -558,10 +558,168 @@ class MTEncDecModel(EncDecNLPModel):
         return result
 
 
+#=============================================================================#
+# translationMIM - encoder-decoder trained with MIM learning
+#=============================================================================#
+class ConditionalEmbedding(nn.Module):
+    """
+    Extends Embedding to support
+    condition embedding by adding projected latent.
+    """
+
+    def __init__(self, num_tokens, emb_size, hidden_size, latent_size, proj_type="z-emb", active=True):
+        """
+        proj_type - "z-cat" for h = cat([z, W * emb])
+                    "z-emb" for h = W * cat([z, emb])
+                    "z-proj" for h = We * emb + Wz * z
+        """
+        super().__init__()
+
+        self.non_cond_emb = torch.nn.Embedding(num_tokens, emb_size)
+
+        self.num_tokens = num_tokens
+        self.emb_size = emb_size
+        self.hidden_size = hidden_size
+        self.latent_size = latent_size
+        self.proj_type = proj_type
+        self.active = active
+
+        # allows hidden and latent
+        self.stack = []
+
+        if proj_type == "z-cat":
+            self.lin_emb = aux.linear_or_identity(emb_size, hidden_size - latent_size)
+            self.hidden2emb = aux.linear_or_identity(hidden_size, emb_size)
+        elif proj_type == "z-emb":
+            self.z_emb2hidden = aux.linear_or_identity(emb_size + latent_size, hidden_size)
+            self.hidden2emb = aux.linear_or_identity(hidden_size, emb_size)
+        elif proj_type == "z-proj":
+            self.emb2hidden = aux.linear_or_identity(emb_size, hidden_size)
+            self.latent2hidden = aux.linear_or_identity(latent_size, hidden_size)
+        else:
+            raise ValueError(f"Unknown proj_type = {proj_type}")
+
+    def push_latent(self, z=None, h=None):
+        """
+        Pushes a latent/hidden to stack.
+        """
+        if self.active:
+            if sum([z is None, h is None]) != 1:
+                raise ValueError("Only one of z or h must be None")
+
+            if z is None:
+                self.stack.append(("h", h))
+            else:
+                self.stack.append(("z", z))
+
+        return self
+
+    def pop_latent(self):
+        """
+        Pops current latent from stack.
+        """
+        if self.active:
+            self.stack.pop()
+
+        return self
+
+    def token_embeddings(self, x):
+        """
+        Returns hidden/conditional hidden from embeddings of x.
+        """
+        # call non-conditional word embeddings
+        emb = self.non_cond_emb(x)
+
+        z_shape = emb.shape[:-1] + (self.latent_size, )
+        h_shape = emb.shape[:-1] + (self.hidden_size, )
+
+        # use stack if available (h is adden, z is projected)
+        if self.active and len(self.stack):
+            # project latent and emb into hidden
+            k, v = self.stack[-1]
+            v = v.to(emb.device)
+
+            if k == "h":
+                h = v.expand(h_shape)
+                z = torch.zeros(z_shape).to(emb.device)
+            elif k == "z":
+                if len(v.shape) < len(z_shape):
+                    z = v.unsqueeze(1).expand(z_shape)
+                else:
+                    z = v.expand(z_shape)
+
+                h = torch.zeros(h_shape).to(emb.device)
+            else:
+                raise RuntimeError(f"Unknown condition type = {k}")
+        else:
+            z = torch.zeros(z_shape).to(emb.device)
+            h = torch.zeros(h_shape).to(emb.device)
+
+        # mix embeddings and latent into hidden
+        if self.proj_type == "z-cat":
+            # project embeddings
+            hidden = torch.cat([z, self.lin_emb(emb)], dim=-1)
+        elif self.proj_type == "z-emb":
+            hidden = self.z_emb2hidden(torch.cat([z, emb], dim=-1))
+        elif self.proj_type == "z-proj":
+            hidden = self.emb2hidden(emb) + self.latent2hidden(z)
+
+        hidden = hidden + h
+
+        return hidden
+
+    def token_logits(self, hidden):
+        """
+        Projects hidden to logits over tokens.
+        """
+
+        # memory efficient projection of hidden to emb
+        if self.proj_type == "z-cat":
+            emb = self.hidden2emb(hidden)
+        elif self.proj_type == "z-emb":
+            emb = self.hidden2emb(hidden)
+        elif self.proj_type == "z-proj":
+            if isinstance(self.emb2hidden, torch.nn.Identity):
+                emb = hidden
+            else:
+                emb = hidden @ self.emb2hidden.weight
+
+        logits = emb @ self.non_cond_emb.weight.t()
+
+        return logits
+
+    def forward(self, x):
+        """
+        Augments AdaptiveEmbedding with conditioning over z
+        """
+        return self.token_embeddings(x)
+
+    def __enter__(self):
+        """
+        To be used after calling push_latent.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.pop_latent()
+
+
 class MTMIMModel(MTEncDecModel):
     """
     translationMIM machine translation model trained with MIM learning.
     """
 
     def __init__(self, cfg: MTMIMModelConfig, trainer: Trainer = None):
-        pass
+        self.model_type: str = cfg.get("model_type", "mim")
+
+    @classmethod
+    def list_available_models(cls) -> Optional[Dict[str, str]]:
+        """
+        This method returns a list of pre-trained model which can be instantiated directly from NVIDIA's NGC cloud.
+
+        Returns:
+            List of available pre-trained models.
+        """
+        result = []
+
+        return result
