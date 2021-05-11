@@ -23,8 +23,8 @@ python enc_dec_nmt.py \
       model.beam_size=4 \
       model.max_generation_delta=5 \
       model.label_smoothing=0.1 \
-      +model.src_language=es \
-      +model.tgt_language=en \
+      model.src_language=es \
+      model.tgt_language=en \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \
