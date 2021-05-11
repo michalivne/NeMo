@@ -38,8 +38,8 @@ python enc_dec_nmt.py \
       model.decoder.ffn_dropout=0.1 \
       model.decoder.num_layers=6 \
       model.optim.lr=0.0004 \
-      model.encoder_tokenizer.tokenizer_name=yttm \
-      model.decoder_tokenizer.tokenizer_name=yttm \
+      model.encoder_tokenizer.library=yttm \
+      model.decoder_tokenizer.library=yttm \
       model.encoder_tokenizer.tokenizer_model=tokenizer.BPE.68957.8192.model  \
       model.decoder_tokenizer.tokenizer_model=tokenizer.BPE.68957.8192.model  \
       model.train_ds.tokens_in_batch=16000 \
