@@ -711,7 +711,7 @@ class MTEncDecModel(EncDecNLPModel):
 #=============================================================================#
 # translationMIM - encoder-decoder trained with MIM learning
 #=============================================================================#
-class ConditionalEmbedding(nn.Module):
+class ConditionalEmbedding(torch.nn.Module):
     """
     Extends Embedding to support
     condition embedding by adding projected latent.
