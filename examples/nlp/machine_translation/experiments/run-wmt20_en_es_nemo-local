@@ -7,7 +7,7 @@ DEC_TOKENIZER=yttm
 
 python enc_dec_nmt.py \
       --config-path=conf \
-      --config-name=emim_base \
+      --config-name=aayn_base \
       exp_manager.name=yttm-yttm \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
