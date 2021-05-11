@@ -108,6 +108,8 @@ class MTEncDecModel(EncDecNLPModel):
             library=library, model_name=model_name, pretrained=pretrained, config_dict=decoder_cfg_dict, encoder=False,
         )
 
+        import pudb; pudb.set_trace()
+
         self.log_softmax = TokenClassifier(
             hidden_size=self.decoder.hidden_size,
             num_classes=self.decoder_vocab_size,
