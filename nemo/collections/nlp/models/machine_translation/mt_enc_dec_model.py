@@ -862,6 +862,7 @@ class MTMIMModel(MTEncDecModel):
     """
 
     def __init__(self, cfg: MTMIMModelConfig, trainer: Trainer = None):
+        super().__init__(cfg=cfg, trainer=trainer)
         # TODO: use model_type
         self.model_type: str = cfg.get("model_type", "mim")
         self.latent_size: int = cfg.get("latent_size", 512)
