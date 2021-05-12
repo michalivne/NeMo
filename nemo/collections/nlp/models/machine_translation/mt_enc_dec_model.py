@@ -797,7 +797,10 @@ class ConditionalEmbedding(torch.nn.Module):
                 z = torch.zeros(z_shape).to(emb.device)
             elif k == "z":
                 if len(v.shape) < len(z_shape):
-                    z = v.unsqueeze(1).expand(z_shape)
+                    try:
+                        z = v.unsqueeze(1).expand(z_shape)
+                    except Exception as e:
+                        import pudb; pudb.set_trace()
                 else:
                     z = v.expand(z_shape)
 
@@ -891,13 +894,10 @@ class MTMIMModel(MTEncDecModel):
 
         z, _, _ = self.sample_z(src_hiddens)
 
-        try:
-            with self.cond_emb.push_latent(z=z):
-                tgt_hiddens = self.decoder(
-                    input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
-                )
-        except e as Exception:
-            import pudb; pudb.set_trace()
+        with self.cond_emb.push_latent(z=z):
+            tgt_hiddens = self.decoder(
+                input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
+            )
 
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
