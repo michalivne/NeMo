@@ -2,7 +2,7 @@ name: translationMIM
 do_training: True # set to False if only preprocessing data
 
 model:
-  beam_size: 4
+  beam_size: 1 # FIXME: currently will break conditional embeddings
   len_pen: 0.6
   max_generation_delta: 5
   label_smoothing: 0.1
