@@ -568,17 +568,7 @@ class MTEncDecModel(EncDecNLPModel):
         try:
             self.eval()
             src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
-
-            # q(z|x)
-            z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(src_hiddens[:, 0]), 2, dim=-1)
-            # avoid numerical instability
-            z_logv = z_logv.clamp_min(self.min_logv)
-            # sample z with reparameterization
-            e = torch.randn_like(z_mean)
-            z = e * torch.exp(0.5 * z_logv) + z_mean
-
-            with self.cond_emb.push_latent(z=z):
-                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+            beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
 
             beam_results = self.filter_predicted_ids(beam_results)
 
@@ -831,15 +821,6 @@ class ConditionalEmbedding(torch.nn.Module):
 
         return hidden
 
-    def token_logits(self, hidden):
-        """
-        Projects hidden to logits over tokens.
-        """
-
-        logits = hidden @ self.non_cond_emb.weight.t()
-
-        return logits
-
     def forward(self, x):
         """
         Augments AdaptiveEmbedding with conditioning over z
@@ -890,17 +871,25 @@ class MTMIMModel(MTEncDecModel):
 
         return result
 
-    @typecheck()
-    def forward(self, src, src_mask, tgt, tgt_mask):
-        src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
-
+    def sample_z(self, hiddens):
+        """
+        Sample latent code z with reparameterization from hiddens
+        """
         # q(z|x)
-        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(src_hiddens[:, 0]), 2, dim=-1)
+        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(hiddens[0]), 2, dim=-1)
         # avoid numerical instability
         z_logv = z_logv.clamp_min(self.min_logv)
         # sample z with reparameterization
         e = torch.randn_like(z_mean)
         z = e * torch.exp(0.5 * z_logv) + z_mean
+
+        return z, z_mean, z_logv
+
+    @typecheck()
+    def forward(self, src, src_mask, tgt, tgt_mask):
+        src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
+
+        z, _, _ = self.sample_z(src_hiddens)
 
         import pudb; pudb.set_trace()
         with self.cond_emb.push_latent(z=z):
@@ -911,3 +900,39 @@ class MTMIMModel(MTEncDecModel):
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
         return log_probs
+
+    @torch.no_grad()
+    def batch_translate(
+        self, src: torch.LongTensor, src_mask: torch.LongTensor,
+    ):
+        """
+        Translates a minibatch of inputs from source language to target language.
+        Args:
+            src: minibatch of inputs in the src language (batch x seq_len)
+            src_mask: mask tensor indicating elements to be ignored (batch x seq_len)
+        Returns:
+            translations: a list strings containing detokenized translations
+            inputs: a list of string containing detokenized inputs
+        """
+        mode = self.training
+        try:
+            self.eval()
+            src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
+            z, _, _ = self.sample_z(src_hiddens)
+            with self.cond_emb.push_latent(z=z):
+                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+
+            beam_results = self.filter_predicted_ids(beam_results)
+
+            translations = [self.decoder_tokenizer.ids_to_text(tr) for tr in beam_results.cpu().numpy()]
+            inputs = [self.encoder_tokenizer.ids_to_text(inp) for inp in src.cpu().numpy()]
+            if self.target_processor is not None:
+                translations = [
+                    self.target_processor.detokenize(translation.split(' ')) for translation in translations
+                ]
+
+            if self.source_processor is not None:
+                inputs = [self.source_processor.detokenize(item.split(' ')) for item in inputs]
+        finally:
+            self.train(mode=mode)
+        return inputs, translations
