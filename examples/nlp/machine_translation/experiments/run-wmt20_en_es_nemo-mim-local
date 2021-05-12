@@ -5,7 +5,7 @@
 ENC_TOKENIZER=yttm
 DEC_TOKENIZER=yttm
 
-python enc_dec_nmt.py \
+python enc_dec_nmt-mim.py \
       --config-path=conf \
       --config-name=mim_base \
       exp_manager.name=yttm-yttm \
