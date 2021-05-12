@@ -891,11 +891,13 @@ class MTMIMModel(MTEncDecModel):
 
         z, _, _ = self.sample_z(src_hiddens)
 
-        import pudb; pudb.set_trace()
-        with self.cond_emb.push_latent(z=z):
-            tgt_hiddens = self.decoder(
-                input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
-            )
+        try:
+            with self.cond_emb.push_latent(z=z):
+                tgt_hiddens = self.decoder(
+                    input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
+                )
+        except e as Exception:
+            import pudb; pudb.set_trace()
 
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
