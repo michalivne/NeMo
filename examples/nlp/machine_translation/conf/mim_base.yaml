@@ -13,6 +13,7 @@ model:
   model_type: 'mim' # support mim, ae, vae
   hidden_size: 512
   proj_type: 'z-proj'
+  min_logv: 1e-6
 
   train_ds:
     src_file_name: null

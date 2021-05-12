@@ -108,9 +108,6 @@ class MTEncDecModel(EncDecNLPModel):
             library=library, model_name=model_name, pretrained=pretrained, config_dict=decoder_cfg_dict, encoder=False,
         )
 
-        import pudb
-        pudb.set_trace()
-
         self.log_softmax = TokenClassifier(
             hidden_size=self.decoder.hidden_size,
             num_classes=self.decoder_vocab_size,
@@ -571,7 +568,18 @@ class MTEncDecModel(EncDecNLPModel):
         try:
             self.eval()
             src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
-            beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+
+            # q(z|x)
+            z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(src_hiddens[:, 0]), 2, dim=-1)
+            # avoid numerical instability
+            z_logv = z_logv.clamp_min(self.min_logv)
+            # sample z with reparameterization
+            e = torch.randn_like(z_mean)
+            z = e * torch.exp(0.5 * z_logv) + z_mean
+
+            with self.cond_emb.push_latent(z=z):
+                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+
             beam_results = self.filter_predicted_ids(beam_results)
 
             translations = [self.decoder_tokenizer.ids_to_text(tr) for tr in beam_results.cpu().numpy()]
@@ -858,15 +866,16 @@ class MTMIMModel(MTEncDecModel):
         self.model_type: str = cfg.get("model_type", "mim")
         self.latent_size: int = cfg.get("latent_size", 512)
         self.proj_type: str = cfg.get("proj_type", "z-proj")
+        self.min_logv: float = cfg.get("min_logv", 1e-6)
 
-        self.cond_emb = self.decoder._embedding.token_embedding = ConditionalEmbedding(
+        self.cond_emb = self.decoder.embedding.token_embedding = ConditionalEmbedding(
             emb=self.decoder._embedding.token_embedding,
             latent_size=self.latent_size,
             proj_type=self.proj_type,
             active=True,
         )
 
-        self.hidden2latent = torch.nn.Linear(self.encoder.hidden_size, self.latent_size)
+        self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
 
     @classmethod
     def list_available_models(cls) -> Optional[Dict[str, str]]:
@@ -883,10 +892,20 @@ class MTMIMModel(MTEncDecModel):
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
         src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
-        z = self.hidden2latent(src_hiddens[:, 0])
 
-        tgt_hiddens = self.decoder(
-            input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
-        )
+        # q(z|x)
+        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(src_hiddens[:, 0]), 2, dim=-1)
+        # avoid numerical instability
+        z_logv = z_logv.clamp_min(self.min_logv)
+        # sample z with reparameterization
+        e = torch.randn_like(z_mean)
+        z = e * torch.exp(0.5 * z_logv) + z_mean
+
+        with self.cond_emb.push_latent(z=z):
+            tgt_hiddens = self.decoder(
+                input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
+            )
+
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
+
         return log_probs
