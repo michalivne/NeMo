@@ -797,7 +797,7 @@ class ConditionalEmbedding(torch.nn.Module):
                 z = torch.zeros(z_shape).to(emb.device)
             elif k == "z":
                 if len(v.shape) < len(z_shape):
-                    z = v.unsqueeze(0).expand(z_shape)
+                    z = v.unsqueeze(1).expand(z_shape)
                 else:
                     z = v.expand(z_shape)
 
@@ -876,7 +876,7 @@ class MTMIMModel(MTEncDecModel):
         Sample latent code z with reparameterization from hiddens
         """
         # q(z|x)
-        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(hiddens[0]), 2, dim=-1)
+        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(hiddens[:, 0]), 2, dim=-1)
         # avoid numerical instability
         z_logv = z_logv.clamp_min(self.min_logv)
         # sample z with reparameterization
