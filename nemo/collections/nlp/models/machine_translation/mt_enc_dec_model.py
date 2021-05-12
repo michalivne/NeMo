@@ -902,6 +902,7 @@ class MTMIMModel(MTEncDecModel):
         e = torch.randn_like(z_mean)
         z = e * torch.exp(0.5 * z_logv) + z_mean
 
+        import pudb; pudb.set_trace()
         with self.cond_emb.push_latent(z=z):
             tgt_hiddens = self.decoder(
                 input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
