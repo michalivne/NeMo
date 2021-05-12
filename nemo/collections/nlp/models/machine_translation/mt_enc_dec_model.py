@@ -68,7 +68,7 @@ class MTEncDecModel(EncDecNLPModel):
         self.tgt_language: str = cfg.get("tgt_language", None)
 
         # Instantiates tokenizers and register to be saved with NeMo Model archive
-        # After this call, ther will be self.encoder_tokenizer and self.decoder_tokenizer
+        # After this call, there will be self.encoder_tokenizer and self.decoder_tokenizer
         # Which can convert between tokens and token_ids for SRC and TGT languages correspondingly.
         self.setup_enc_dec_tokenizers(
             encoder_tokenizer_library=cfg.encoder_tokenizer.get('library', 'yttm'),
@@ -108,7 +108,8 @@ class MTEncDecModel(EncDecNLPModel):
             library=library, model_name=model_name, pretrained=pretrained, config_dict=decoder_cfg_dict, encoder=False,
         )
 
-        import pudb; pudb.set_trace()
+        import pudb
+        pudb.set_trace()
 
         self.log_softmax = TokenClassifier(
             hidden_size=self.decoder.hidden_size,
@@ -711,21 +712,28 @@ class MTEncDecModel(EncDecNLPModel):
 #=============================================================================#
 # translationMIM - encoder-decoder trained with MIM learning
 #=============================================================================#
+
+# TODO: allow to replace only certain tokens (i.e., <BOS>)
 class ConditionalEmbedding(torch.nn.Module):
     """
     Extends Embedding to support
     condition embedding by adding projected latent.
     """
 
-    def __init__(self, num_tokens, emb_size, hidden_size, latent_size, proj_type="z-emb", active=True):
+    def __init__(self, emb, latent_size, proj_type="z-proj", active=True):
         """
+        emb - nn.Embedding
+
         proj_type - "z-cat" for h = cat([z, W * emb])
                     "z-emb" for h = W * cat([z, emb])
                     "z-proj" for h = We * emb + Wz * z
         """
         super().__init__()
 
-        self.non_cond_emb = torch.nn.Embedding(num_tokens, emb_size)
+        num_tokens = emb.num_embeddings
+        emb_size = hidden_size = emb.embedding_dim
+
+        self.non_cond_emb = emb
 
         self.num_tokens = num_tokens
         self.emb_size = emb_size
@@ -738,14 +746,11 @@ class ConditionalEmbedding(torch.nn.Module):
         self.stack = []
 
         if proj_type == "z-cat":
-            self.lin_emb = aux.linear_or_identity(emb_size, hidden_size - latent_size)
-            self.hidden2emb = aux.linear_or_identity(hidden_size, emb_size)
+            self.lin_emb = torch.nn.Linear(emb_size, hidden_size - latent_size)
         elif proj_type == "z-emb":
-            self.z_emb2hidden = aux.linear_or_identity(emb_size + latent_size, hidden_size)
-            self.hidden2emb = aux.linear_or_identity(hidden_size, emb_size)
+            self.z_emb2hidden = torch.nn.Linear(emb_size + latent_size, hidden_size)
         elif proj_type == "z-proj":
-            self.emb2hidden = aux.linear_or_identity(emb_size, hidden_size)
-            self.latent2hidden = aux.linear_or_identity(latent_size, hidden_size)
+            self.latent2hidden = torch.nn.Linear(latent_size, hidden_size)
         else:
             raise ValueError(f"Unknown proj_type = {proj_type}")
 
@@ -812,7 +817,7 @@ class ConditionalEmbedding(torch.nn.Module):
         elif self.proj_type == "z-emb":
             hidden = self.z_emb2hidden(torch.cat([z, emb], dim=-1))
         elif self.proj_type == "z-proj":
-            hidden = self.emb2hidden(emb) + self.latent2hidden(z)
+            hidden = emb + self.latent2hidden(z)
 
         hidden = hidden + h
 
@@ -823,18 +828,7 @@ class ConditionalEmbedding(torch.nn.Module):
         Projects hidden to logits over tokens.
         """
 
-        # memory efficient projection of hidden to emb
-        if self.proj_type == "z-cat":
-            emb = self.hidden2emb(hidden)
-        elif self.proj_type == "z-emb":
-            emb = self.hidden2emb(hidden)
-        elif self.proj_type == "z-proj":
-            if isinstance(self.emb2hidden, torch.nn.Identity):
-                emb = hidden
-            else:
-                emb = hidden @ self.emb2hidden.weight
-
-        logits = emb @ self.non_cond_emb.weight.t()
+        logits = hidden @ self.non_cond_emb.weight.t()
 
         return logits
 
@@ -860,7 +854,19 @@ class MTMIMModel(MTEncDecModel):
     """
 
     def __init__(self, cfg: MTMIMModelConfig, trainer: Trainer = None):
+        # TODO: use model_type
         self.model_type: str = cfg.get("model_type", "mim")
+        self.latent_size: int = cfg.get("latent_size", 512)
+        self.proj_type: str = cfg.get("proj_type", "z-proj")
+
+        self.cond_emb = self.decoder._embedding.token_embedding = ConditionalEmbedding(
+            emb=self.decoder._embedding.token_embedding,
+            latent_size=self.latent_size,
+            proj_type=self.proj_type,
+            active=True,
+        )
+
+        self.hidden2latent = torch.nn.Linear(self.encoder.hidden_size, self.latent_size)
 
     @classmethod
     def list_available_models(cls) -> Optional[Dict[str, str]]:
@@ -873,3 +879,14 @@ class MTMIMModel(MTEncDecModel):
         result = []
 
         return result
+
+    @typecheck()
+    def forward(self, src, src_mask, tgt, tgt_mask):
+        src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
+        z = self.hidden2latent(src_hiddens[:, 0])
+
+        tgt_hiddens = self.decoder(
+            input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
+        )
+        log_probs = self.log_softmax(hidden_states=tgt_hiddens)
+        return log_probs

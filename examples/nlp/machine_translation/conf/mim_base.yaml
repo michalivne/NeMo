@@ -11,6 +11,8 @@ model:
   src_language: 'en'
   tgt_language: 'de'
   model_type: 'mim' # support mim, ae, vae
+  hidden_size: 512
+  proj_type: 'z-proj'
 
   train_ds:
     src_file_name: null

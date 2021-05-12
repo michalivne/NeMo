@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+# command
+
+ENC_TOKENIZER=yttm
+DEC_TOKENIZER=yttm
+
+python enc_dec_nmt.py \
+      --config-path=conf \
+      --config-name=mim_base \
+      exp_manager.name=yttm-yttm \
+      'trainer.gpus=-1' \
+      '~trainer.max_epochs' \
+      +trainer.max_steps=300000 \
+      +trainer.val_check_interval=1000 \
+      +exp_manager.exp_dir=results/yttm-yttm \
+      +exp_manager.resume_if_exists=True \
+      +exp_manager.resume_ignore_no_checkpoint=True \
+      +exp_manager.create_checkpoint_callback=True \
+      +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \
+      +exp_manager.checkpoint_callback_params.mode=max \
+      +exp_manager.checkpoint_callback_params.save_top_k=10 \
+      model.beam_size=4 \
+      model.max_generation_delta=5 \
+      model.label_smoothing=0.1 \
+      model.src_language=es \
+      model.tgt_language=en \
+      model.model_type=mim \
+      model.hidden_size = 1024 \
+      model.encoder.hidden_size=1024 \
+      model.encoder.inner_size=4096 \
+      model.encoder.num_attention_heads=16 \
+      model.encoder.attn_layer_dropout=0.1 \
+      model.encoder.ffn_dropout=0.1 \
+      model.encoder.num_layers=6 \
+      model.decoder.hidden_size=1024 \
+      model.decoder.inner_size=4096 \
+      model.decoder.num_attention_heads=16 \
+      model.decoder.attn_layer_dropout=0.1 \
+      model.decoder.ffn_dropout=0.1 \
+      model.decoder.num_layers=6 \
+      model.optim.lr=0.0004 \
+      model.encoder_tokenizer.library=yttm \
+      model.decoder_tokenizer.library=yttm \
+      model.encoder_tokenizer.tokenizer_model=tokenizer.BPE.68957.8192.model  \
+      model.decoder_tokenizer.tokenizer_model=tokenizer.BPE.68957.8192.model  \
+      model.train_ds.tokens_in_batch=16000 \
+      model.train_ds.src_file_name=data/wmt20_en_es_nemo/train.clean.en-es.60.tok.es.shuffled \
+      model.train_ds.tgt_file_name=data/wmt20_en_es_nemo/train.clean.en-es.60.tok.en.shuffled \
+      model.validation_ds.src_file_name=data/wmt20_en_es_nemo/newstest2012-es-en.clean.tok.src \
+      model.validation_ds.tgt_file_name=data/wmt20_en_es_nemo/newstest2012-es-en.clean.tok.ref \
+      model.test_ds.src_file_name=data/wmt20_en_es_nemo/newstest2013-es-en.clean.tok.src \
+      model.test_ds.tgt_file_name=data/wmt20_en_es_nemo/newstest2013-es-en.clean.tok.ref \
+      model.train_ds.use_tarred_dataset=true \
+      do_training=true \
+      model.preproc_out_dir=data/preproc-wmt20_en_es_nemo \
