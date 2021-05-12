@@ -26,7 +26,7 @@ python enc_dec_nmt-mim.py \
       model.src_language=es \
       model.tgt_language=en \
       model.model_type=mim \
-      model.hidden_size = 1024 \
+      model.hidden_size=1024 \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \

@@ -19,7 +19,7 @@ from pytorch_lightning import Trainer
 
 from nemo.collections.nlp.data.machine_translation.preproc_mt_data import MTDataPreproc
 from nemo.collections.nlp.models.machine_translation.mt_enc_dec_config import MTEncDecModelConfig
-from nemo.collections.nlp.models.machine_translation.mt_enc_dec_model import MTEncDecModel
+from nemo.collections.nlp.models.machine_translation.mt_enc_dec_model import MTMIMModel
 from nemo.core.config import hydra_runner
 from nemo.core.config.modelPT import NemoConfig
 from nemo.core.config.pytorch_lightning import TrainerConfig
@@ -31,22 +31,22 @@ from nemo.utils.exp_manager import ExpManagerConfig, exp_manager
 """
 Usage:
  1. If you need to start docker and install NeMo, otherwise skip this step:
- 
+
     a. ```docker run --gpus all -it --rm -v /home/okuchaiev/repos/NeMo/:/NeMo -p 6006:6006  -v /mnt:/mnt --shm-size=16g --ulimit memlock=-1 --ulimit stack=67108864 --device=/dev/snd nvcr.io/nvidia/pytorch:20.11-py3```
     b. ```cd /NeMo```
     c. ```./reinstall.sh```
- 
+
  2. Train a new tokenizer (or use pre-trained one):
     ```yttm bpe --data /mnt/D1/Data/NMT/wmt16_de_en/train.clean.en-de.shuffled.common --model tokenizer.BPE.8192.model --vocab_size 8192```
 
 (To use WANDB, optionally, do login first)
 ``wandb login [YOUR WANDB login]``
-    
+
  3. Start training:
- 
+
 
  (This example for "base" model on 2 GPUs for 150000 steps with batch size of 12500 tokens per GPU)
- 
+
  python enc_dec_nmt.py \
       --config-path=conf \
       --config-name=aayn_base \
@@ -84,7 +84,7 @@ Usage:
       +exp_manager.create_checkpoint_callback=True \
       +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \
       +exp_manager.exp_dir=nmt_base \
-      +exp_manager.checkpoint_callback_params.mode=max 
+      +exp_manager.checkpoint_callback_params.mode=max
 """
 
 
@@ -118,7 +118,7 @@ def main(cfg: MTEncDecConfig) -> None:
     exp_manager(trainer, cfg.exp_manager)
 
     # everything needed to train translation models is encapsulated in the NeMo MTEncdDecModel
-    mt_model = MTEncDecModel(cfg.model, trainer=trainer)
+    mt_model = MTMIMModel(cfg.model, trainer=trainer)
 
     logging.info("\n\n************** Model parameters and their sizes ***********")
     for name, param in mt_model.named_parameters():
