@@ -20,7 +20,7 @@ python enc_dec_nmt-mim.py \
       +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \
       +exp_manager.checkpoint_callback_params.mode=max \
       +exp_manager.checkpoint_callback_params.save_top_k=10 \
-      model.beam_size=4 \
+      model.beam_size=1 \
       model.max_generation_delta=5 \
       model.label_smoothing=0.1 \
       model.src_language=es \
