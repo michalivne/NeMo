@@ -797,10 +797,7 @@ class ConditionalEmbedding(torch.nn.Module):
                 z = torch.zeros(z_shape).to(emb.device)
             elif k == "z":
                 if len(v.shape) < len(z_shape):
-                    try:
-                        z = v.unsqueeze(1).expand(z_shape)
-                    except Exception as e:
-                        import pudb; pudb.set_trace()
+                    z = v.unsqueeze(1).expand(z_shape)
                 else:
                     z = v.expand(z_shape)
 
