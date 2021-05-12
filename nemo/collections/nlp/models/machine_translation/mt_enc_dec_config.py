@@ -134,3 +134,6 @@ class AAYNBaseConfig(MTEncDecModelConfig):
 @dataclass
 class MTMIMModelConfig(AAYNBaseConfig):
     model_type: str = 'mim'
+    latent_size: int = 512
+    proj_type: str = 'z-proj'
+    min_logv: float = 1e-6

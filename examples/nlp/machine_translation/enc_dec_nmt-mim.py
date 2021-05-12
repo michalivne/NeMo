@@ -18,8 +18,8 @@ from typing import Optional
 from pytorch_lightning import Trainer
 
 from nemo.collections.nlp.data.machine_translation.preproc_mt_data import MTDataPreproc
-from nemo.collections.nlp.models.machine_translation.mt_enc_dec_config import MTEncDecModelConfig
-from nemo.collections.nlp.models.machine_translation.mt_enc_dec_model import MTEncDecModel
+from nemo.collections.nlp.models.machine_translation.mt_enc_dec_config import MTMIMModelConfig
+from nemo.collections.nlp.models.machine_translation.mt_enc_dec_model import MTMIMModel
 from nemo.core.config import hydra_runner
 from nemo.core.config.modelPT import NemoConfig
 from nemo.core.config.pytorch_lightning import TrainerConfig
@@ -90,10 +90,10 @@ Usage:
 
 @dataclass
 class MTEncDecConfig(NemoConfig):
-    name: Optional[str] = 'MTEncDec'
+    name: Optional[str] = 'translationMIM'
     do_training: bool = True
     do_testing: bool = False
-    model: MTEncDecModelConfig = MTEncDecModelConfig()
+    model: MTMIMModelConfig = MTMIMModelConfig()
     trainer: Optional[TrainerConfig] = TrainerConfig()
     exp_manager: Optional[ExpManagerConfig] = ExpManagerConfig(name='MTEncDec', files_to_copy=[])
 
@@ -118,7 +118,7 @@ def main(cfg: MTEncDecConfig) -> None:
     exp_manager(trainer, cfg.exp_manager)
 
     # everything needed to train translation models is encapsulated in the NeMo MTEncdDecModel
-    mt_model = MTEncDecModel(cfg.model, trainer=trainer)
+    mt_model = MTMIMModel(cfg.model, trainer=trainer)
 
     logging.info("\n\n************** Model parameters and their sizes ***********")
     for name, param in mt_model.named_parameters():
