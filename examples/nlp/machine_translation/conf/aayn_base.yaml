@@ -129,7 +129,7 @@ model:
   head:
     num_layers: 1
     activation: relu
-    log_sftmax: true
+    log_softmax: true
     dropout: 0.0
     use_transformer_init: true
 
