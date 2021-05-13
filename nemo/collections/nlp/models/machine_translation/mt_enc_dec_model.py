@@ -896,6 +896,7 @@ class MTMIMModel(MTEncDecModel):
                 input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
             )
 
+        # FIXME: return here MIM loss
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
         return log_probs
