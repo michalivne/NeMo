@@ -27,9 +27,9 @@ python enc_dec_nmt-mim.py \
       model.tgt_language=en \
       model.model_type=mim \
       model.latent_size=1024 \
-      ortho_loss_coef=1.0 \
-      att_bridge_k=30 \
-      att_bridge_size=4096 \
+      model.ortho_loss_coef=1.0 \
+      model.att_bridge_k=30 \
+      model.att_bridge_size=4096 \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \

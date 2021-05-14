@@ -902,7 +902,7 @@ class MTMIMModel(MTEncDecModel):
         self.latent_size: int = cfg.get("latent_size", 512)
         # self.proj_type: str = cfg.get("proj_type", "z-proj")
         self.min_logv: float = cfg.get("min_logv", 1e-6)
-        self.ortho_loss_coeff: float = cfg.get("ortho_loss_coef", 1.0)
+        self.ortho_loss_coef: float = cfg.get("ortho_loss_coef", 1.0)
         self.att_bridge_k: int = cfg.get("att_bridge_k", 20)
         self.att_bridge_size: int = cfg.get("att_bridge_size", 1024)
 
@@ -991,7 +991,7 @@ class MTMIMModel(MTEncDecModel):
 
         loss = -(
             log_p_x_given_z + 0.5 * (log_q_z_given_x + log_p_z)
-        ) + self.ortho_loss_coeff * ortho_loss
+        ) + self.ortho_loss_coef * ortho_loss
 
         return loss
 
