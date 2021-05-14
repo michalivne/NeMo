@@ -914,7 +914,7 @@ class MTMIMModel(MTEncDecModel):
         # )
 
         self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
-        if (self.latent_size ! self.encoder.hidden_size):
+        if (self.latent_size != self.encoder.hidden_size):
             self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
         else:
             self.latent2hidden = torch.nn.Identity()
