@@ -14,6 +14,9 @@ model:
   latent_size: 512
   proj_type: 'z-proj'
   min_logv: 1e-6
+  ortho_loss_coeff: 1.0
+  att_bridge_k: 20
+  att_bridge_size: 1024
 
   train_ds:
     src_file_name: null

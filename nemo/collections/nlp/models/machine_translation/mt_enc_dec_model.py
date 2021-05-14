@@ -19,6 +19,7 @@ import random
 from multiprocessing import Value
 from pathlib import Path
 from typing import Dict, List, Optional, Union
+import math
 
 import numpy as np
 import torch
@@ -44,6 +45,7 @@ from nemo.collections.nlp.modules.common.tokenizer_utils import get_nmt_tokenize
 from nemo.collections.nlp.modules.common.transformer import BeamSearchSequenceGenerator, TopKSequenceGenerator
 from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.utils import logging, model_utils
+from nemo.collections.common.parts import form_attention_mask
 
 __all__ = ['MTEncDecModel']
 
@@ -841,6 +843,8 @@ class AttentionBridge(torch.nn.Module):
     """
     A multi-head attention bridge to project a variable-size hidden states
     to k hidden states (per attention head).
+
+    Code is based on the paper https://arxiv.org/pdf/1703.03130.pdf
     """
 
     def __init__(self, hidden_size, k, bridge_size):
@@ -861,21 +865,27 @@ class AttentionBridge(torch.nn.Module):
         self.W2 = torch.nn.Linear(bridge_size, k, bias=False)
         self.act = torch.nn.ReLU()
 
-    def forward(self, hidden, return_otho_loss=False):
+    def forward(self, hidden, hidden_mask=None, return_ortho_loss=False):
         """
         Project hidden [B x N x H] to fixed-size [B x k x H]
 
-        return_otho_penalty - if True returns loss term to encourage
+        return_ortho_loss - if True returns loss term to encourage
                               orthogonal attention vectors
         """
-        import pudb; pudb.set_trace()
-        A = self.W2(self.act(self.W1(hidden.t())))
+
+        attention_scores = self.W2(self.act(self.W1(hidden.transpose(-1, -2))))
+
+        attention_mask = form_attention_mask(hidden_mask)
+        if attn_mask is not None:
+            attention_scores = attention_scores + attention_mask.to(attention_scores.dtype)
+
+        A = torch.softmax(attention_scores, dim=-1)
         M = A @ hidden
 
-        if return_otho_loss:
-            otho_loss = (A @ A.t() - torch.eye(self.k).type_as(A)).pow(2).sum()
+        if return_ortho_loss:
+            ortho_loss = (A @ A.t() - torch.eye(self.k).type_as(A)).pow(2).sum()
 
-            return M, otho_loss
+            return M, ortho_loss
         else:
             return M
 
@@ -890,17 +900,30 @@ class MTMIMModel(MTEncDecModel):
         # TODO: use model_type
         self.model_type: str = cfg.get("model_type", "mim")
         self.latent_size: int = cfg.get("latent_size", 512)
-        self.proj_type: str = cfg.get("proj_type", "z-proj")
+        # self.proj_type: str = cfg.get("proj_type", "z-proj")
         self.min_logv: float = cfg.get("min_logv", 1e-6)
+        self.ortho_loss_coeff: float = cfg.get("ortho_loss_coeff", 1.0)
+        self.att_bridge_k: int = cfg.get("att_bridge_k", 20)
+        self.att_bridge_size: int = cfg.get("att_bridge_size", 1024)
 
-        self.cond_emb = self.decoder.embedding.token_embedding = ConditionalEmbedding(
-            emb=self.decoder._embedding.token_embedding,
-            latent_size=self.latent_size,
-            proj_type=self.proj_type,
-            active=True,
-        )
+        # self.cond_emb = self.decoder.embedding.token_embedding = ConditionalEmbedding(
+        #     emb=self.decoder._embedding.token_embedding,
+        #     latent_size=self.latent_size,
+        #     proj_type=self.proj_type,
+        #     active=True,
+        # )
 
         self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
+        if (self.latent_size ! self.encoder.hidden_size):
+            self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
+        else:
+            self.latent2hidden = torch.nn.Identity()
+
+        self.att_bridge = AttentionBridge(
+            hidden_size=self.encoder.hidden_size,
+            k=self.att_bridge_k,
+            bridge_size=self.att_bridge_size,
+        )
 
     @classmethod
     def list_available_models(cls) -> Optional[Dict[str, str]]:
@@ -919,7 +942,7 @@ class MTMIMModel(MTEncDecModel):
         Sample latent code z with reparameterization from hiddens
         """
         # q(z|x)
-        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(hiddens[:, 0]), 2, dim=-1)
+        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(hiddens), 2, dim=-1)
         # avoid numerical instability
         z_logv = z_logv.clamp_min(self.min_logv)
         # sample z with reparameterization
@@ -930,19 +953,46 @@ class MTMIMModel(MTEncDecModel):
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
-        src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
+        src_hiddens = self.encoder(
+            input_ids=src,
+            encoder_mask=src_mask,
+        )
+        bridge_hiddens_enc, ortho_loss = self.att_bridge(
+            src_hiddens,
+            return_ortho_loss=True,
+        )
 
-        z, _, _ = self.sample_z(src_hiddens)
+        # build posterior distribution
+        z, z_mean, z_logv = self.sample_z(bridge_hiddens_enc)
+        q_z_given_x = torch.distributions.Normal(
+            loc=z_mean,
+            scale=torch.exp(0.5 * z_logv),
+        )
+        log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1)
 
-        with self.cond_emb.push_latent(z=z):
-            tgt_hiddens = self.decoder(
-                input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
-            )
+        # build prior distribution
+        p_z = torch.distributions.Normal(
+            loc=torch.zeros_like(z),
+            scale=torch.ones_like(z),
+        )
+        log_p_z = p_z.log_prob(z).sum(-1)
 
-        # FIXME: return here MIM loss
-        log_probs = self.log_softmax(hidden_states=tgt_hiddens)
+        # build decoding distribution
+        bridge_hiddens_dec = self.latent2hidden(z)
+        tgt_hiddens = self.decoder(
+            input_ids=tgt,
+            decoder_mask=tgt_mask,
+            encoder_embeddings=bridge_hiddens_dec,
+            encoder_mask=src_mask,
+        )
 
-        return log_probs
+        log_p_x_given_z = -self.log_softmax(hidden_states=tgt_hiddens)
+
+        loss = -(
+            log_p_x_given_z + 0.5 * (log_q_z_given_x + log_p_z)
+        ) + self.ortho_loss_coeff * ortho_loss
+
+        return loss
 
     @torch.no_grad()
     def batch_translate(
