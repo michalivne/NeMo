@@ -8,7 +8,7 @@ DEC_TOKENIZER=yttm
 python enc_dec_nmt-mim.py \
       --config-path=conf \
       --config-name=mim_base \
-      exp_manager.name=yttm-yttm \
+      exp_manager.name=yttm-yttm-mim \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
       +trainer.max_steps=300000 \
