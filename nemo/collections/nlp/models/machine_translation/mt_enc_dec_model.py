@@ -724,7 +724,7 @@ class ConditionalEmbedding(torch.nn.Module):
 
         proj_type - "z-cat" for h = cat([z, W * emb])
                     "z-emb" for h = W * cat([z, emb])
-                    "z-proj" for h = We * emb + Wz * z
+                    "z-proj" for h = emb + W * z
         """
         super().__init__()
 
@@ -835,6 +835,49 @@ class ConditionalEmbedding(torch.nn.Module):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.pop_latent()
+
+
+class AttentionBridge(torch.nn.Module):
+    """
+    A multi-head attention bridge to project a variable-size hidden states
+    to k hidden states (per attention head).
+    """
+
+    def __init__(self, hidden_size, k, bridge_size):
+        """
+        hidden_size - size of input hidden state
+        k - number of attention heads
+        bridge_size - size of internal feed forward weights
+        """
+        super().__init__()
+
+        self.hidden_size = hidden_size
+        self.k = k
+        self.bridge_size = bridge_size
+
+        # build model
+
+        self.W1 = torch.nn.Linear(hidden_size, bridge_size, bias=False)
+        self.W2 = torch.nn.Linear(bridge_size, k, bias=False)
+        self.act = torch.nn.ReLU()
+
+    def forward(self, hidden, return_otho_loss=False):
+        """
+        Project hidden [B x N x H] to fixed-size [B x k x H]
+
+        return_otho_penalty - if True returns loss term to encourage
+                              orthogonal attention vectors
+        """
+        import pudb; pudb.set_trace()
+        A = self.W2(self.act(self.W1(hidden.t())))
+        M = A @ hidden
+
+        if return_otho_loss:
+            otho_loss = (A @ A.t() - torch.eye(self.k).type_as(A)).pow(2).sum()
+
+            return M, otho_loss
+        else:
+            return M
 
 
 class MTMIMModel(MTEncDecModel):
