@@ -959,7 +959,8 @@ class MTMIMModel(MTEncDecModel):
         )
         import pudb; pudb.set_trace()
         bridge_hiddens_enc, ortho_loss = self.att_bridge(
-            src_hiddens,
+            hidden=src_hiddens,
+            hidden_mask=src_mask,
             return_ortho_loss=True,
         )
 
