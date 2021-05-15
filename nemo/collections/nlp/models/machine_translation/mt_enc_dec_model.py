@@ -1093,7 +1093,7 @@ class MTMIMModel(MTEncDecModel):
         # this will run encoder twice -- TODO: potentially fix
         _, translations = self.batch_translate(src=src_ids, src_mask=src_mask)
 
-        num_measurements = labels.shape[0] * (log_probs.shape[1] - 1)
+        num_measurements = labels.shape[0] * (labels.shape[1] - 1)
         if dataloader_idx == 0:
             getattr(self, f'{mode}_loss')(loss=eval_loss, num_measurements=num_measurements)
         else:
