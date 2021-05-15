@@ -974,7 +974,6 @@ class MTMIMModel(MTEncDecModel):
             input_ids=src,
             encoder_mask=src_mask,
         )
-        import pudb; pudb.set_trace()
 
         # build posterior distribution
         z, z_mean, z_logv, ortho_loss = self.sample_z(
@@ -986,14 +985,14 @@ class MTMIMModel(MTEncDecModel):
             loc=z_mean,
             scale=torch.exp(0.5 * z_logv),
         )
-        log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1)
+        log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
 
         # build prior distribution
         p_z = torch.distributions.Normal(
             loc=torch.zeros_like(z),
             scale=torch.ones_like(z),
         )
-        log_p_z = p_z.log_prob(z).sum(-1)
+        log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
 
         # build decoding distribution
         bridge_hiddens_dec = self.latent2hidden(z)
@@ -1036,9 +1035,17 @@ class MTMIMModel(MTEncDecModel):
         try:
             self.eval()
             src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
-            z, _, _ = self.sample_z(src_hiddens)
-            with self.cond_emb.push_latent(z=z):
-                beam_results = self.beam_search(encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask)
+
+            z, _, _ = self.sample_z(
+                hidden=src_hiddens,
+                hidden_mask=src_mask,
+                return_ortho_loss=False,
+            )
+            bridge_hiddens_dec = self.latent2hidden(z)
+            bridge_mask = torch.ones(z.shape[0:2]).to(src_mask)
+
+            # with self.cond_emb.push_latent(z=z):
+            beam_results = self.beam_search(encoder_hidden_states=bridge_hiddens_dec, encoder_input_mask=bridge_mask)
 
             beam_results = self.filter_predicted_ids(beam_results)
 
