@@ -1017,7 +1017,7 @@ class MTMIMModel(MTEncDecModel):
             log_p_x_given_z + 0.5 * (log_q_z_given_x + log_p_z)
         ) + self.ortho_loss_coef * ortho_loss
 
-        return loss
+        return loss, log_p_x_given_z
 
     @torch.no_grad()
     def batch_translate(
@@ -1061,6 +1061,7 @@ class MTMIMModel(MTEncDecModel):
                 inputs = [self.source_processor.detokenize(item.split(' ')) for item in inputs]
         finally:
             self.train(mode=mode)
+
         return inputs, translations
 
     def training_step(self, batch, batch_idx):
@@ -1075,12 +1076,13 @@ class MTMIMModel(MTEncDecModel):
                 # is excess.
                 batch[i] = batch[i].squeeze(dim=0)
         src_ids, src_mask, tgt_ids, tgt_mask, labels = batch
-        train_loss = self(src_ids, src_mask, tgt_ids, tgt_mask, labels, train=True)
+        train_loss, train_recon = self(src_ids, src_mask, tgt_ids, tgt_mask, labels, train=True)
         tensorboard_logs = {
             'train_loss': train_loss,
             'lr': self._optimizer.param_groups[0]['lr'],
+            'train_recon': train_recon,
         }
-        return {'loss': train_loss, 'log': tensorboard_logs}
+        return {'loss': train_loss, 'log': tensorboard_logs, 'recon': train_recon}
 
     def eval_step(self, batch, batch_idx, mode, dataloader_idx=0):
         for i in range(len(batch)):
@@ -1089,7 +1091,7 @@ class MTMIMModel(MTEncDecModel):
                 # is excess.
                 batch[i] = batch[i].squeeze(dim=0)
         src_ids, src_mask, tgt_ids, tgt_mask, labels = batch
-        eval_loss = self(src_ids, src_mask, tgt_ids, tgt_mask, labels, train=False)
+        eval_loss, eval_recon = self(src_ids, src_mask, tgt_ids, tgt_mask, labels, train=False)
         # this will run encoder twice -- TODO: potentially fix
         _, translations = self.batch_translate(src=src_ids, src_mask=src_mask)
 
