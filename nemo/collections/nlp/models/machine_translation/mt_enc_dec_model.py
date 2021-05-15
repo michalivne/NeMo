@@ -1006,6 +1006,7 @@ class MTMIMModel(MTEncDecModel):
 
         log_probs = -self.log_softmax(hidden_states=tgt_hiddens)
 
+        import pudb; pudb.set_trace()
         # FIXME: averaging of log_p_x_given_z is per token, not per sample
         if train:
             log_p_x_given_z = self.loss_fn(log_probs=log_probs, labels=labels)
@@ -1091,11 +1092,13 @@ class MTMIMModel(MTEncDecModel):
         eval_loss = self(src_ids, src_mask, tgt_ids, tgt_mask, labels, train=False)
         # this will run encoder twice -- TODO: potentially fix
         _, translations = self.batch_translate(src=src_ids, src_mask=src_mask)
+
+        num_measurements = (labels.shape[0] - 1) * (log_probs.shape[1]-1)
         if dataloader_idx == 0:
-            getattr(self, f'{mode}_loss')(loss=eval_loss, num_measurements=log_probs.shape[0] * log_probs.shape[1])
+            getattr(self, f'{mode}_loss')(loss=eval_loss, num_measurements=num_measurements)
         else:
             getattr(self, f'{mode}_loss_{dataloader_idx}')(
-                loss=eval_loss, num_measurements=(labels.shape[0] - 1) * (log_probs.shape[1]-1)
+                loss=eval_loss, num_measurements=num_measurements
             )
         np_tgt = tgt_ids.detach().cpu().numpy()
         ground_truths = [self.decoder_tokenizer.ids_to_text(tgt) for tgt in np_tgt]
