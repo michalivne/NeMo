@@ -40,13 +40,9 @@ nvidia-smi \
 && pip install --upgrade wandb \
 && pip install Cython \
 && wandb login ${WANDBLOGIN} \
-&& git clone https://michalivne:${GITHUB_KEY}@github.com/seraphlabs-ca/SentenceMIM.git \
-&& pushd SentenceMIM \
-&& pip install -r requirements.txt \
-&& popd \
 && git clone https://github.com/michalivne/NeMo.git \
 && cd NeMo/ \
-&& git checkout nmt_embeddingMIM \
+&& git checkout nmt-translationMIM \
 && ./reinstall.sh \
 && cd examples/nlp/machine_translation \
 && cp -R /data/ds/backtranslated/train.clean.en-es.backtranslated.es-en.tok.*.shuffled /raid/ \
