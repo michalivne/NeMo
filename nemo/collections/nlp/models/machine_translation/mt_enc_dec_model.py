@@ -876,7 +876,7 @@ class AttentionBridge(torch.nn.Module):
         attention_scores = self.W2(self.act(self.W1(hidden))).transpose(-1, -2)
 
         attention_mask = form_attention_mask(hidden_mask)
-        if attn_mask is not None:
+        if attention_mask is not None:
             attention_mask.squeeze_(1)
             attention_scores = attention_scores + attention_mask.to(attention_scores.dtype)
 
