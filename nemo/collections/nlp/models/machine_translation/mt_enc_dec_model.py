@@ -873,17 +873,18 @@ class AttentionBridge(torch.nn.Module):
                               orthogonal attention vectors
         """
 
-        attention_scores = self.W2(self.act(self.W1(hidden.transpose(-1, -2))))
+        attention_scores = self.W2(self.act(self.W1(hidden))).transpose(-1, -2)
 
         attention_mask = form_attention_mask(hidden_mask)
         if attn_mask is not None:
+            attention_mask.squeeze_(1)
             attention_scores = attention_scores + attention_mask.to(attention_scores.dtype)
 
         A = torch.softmax(attention_scores, dim=-1)
         M = A @ hidden
 
         if return_ortho_loss:
-            ortho_loss = (A @ A.t() - torch.eye(self.k).type_as(A)).pow(2).sum()
+            ortho_loss = ((A @ A.transpose(-1, -2)) - torch.eye(self.k).type_as(A)).pow(2).sum()
 
             return M, ortho_loss
         else:
