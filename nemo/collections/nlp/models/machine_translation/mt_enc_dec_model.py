@@ -915,10 +915,11 @@ class MTMIMModel(MTEncDecModel):
         # )
 
         self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
-        if (self.latent_size != self.encoder.hidden_size):
-            self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
-        else:
-            self.latent2hidden = torch.nn.Identity()
+        # FIXME: use Identity when latent == hidden size?
+        # if (self.latent_size != self.encoder.hidden_size):
+        self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
+        # else:
+        #     self.latent2hidden = torch.nn.Identity()
 
         self.att_bridge = AttentionBridge(
             hidden_size=self.encoder.hidden_size,
@@ -938,35 +939,49 @@ class MTMIMModel(MTEncDecModel):
 
         return result
 
-    def sample_z(self, hiddens):
+    def sample_z(self, hidden, hidden_mask, return_ortho_loss=False):
         """
         Sample latent code z with reparameterization from hiddens
         """
-        # q(z|x)
-        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(hiddens), 2, dim=-1)
+        # project hidden to a fixed size bridge
+        res = self.att_bridge(
+            hidden=hidden,
+            hidden_mask=hidden_mask,
+            return_ortho_loss=return_ortho_loss,
+        )
+
+        if return_ortho_loss:
+            bridge_hidden, ortho_loss = res
+        else:
+            bridge_hidden = res
+
+        # parameters of posterior q(z|x)
+        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(bridge_hidden), 2, dim=-1)
         # avoid numerical instability
         z_logv = z_logv.clamp_min(self.min_logv)
         # sample z with reparameterization
         e = torch.randn_like(z_mean)
         z = e * torch.exp(0.5 * z_logv) + z_mean
 
-        return z, z_mean, z_logv
+        if return_ortho_loss:
+            return z, z_mean, z_logv, ortho_loss
+        else:
+            return z, z_mean, z_logv
 
     @typecheck()
-    def forward(self, src, src_mask, tgt, tgt_mask):
+    def forward(self, src, src_mask, tgt, tgt_mask, labels, train=True):
         src_hiddens = self.encoder(
             input_ids=src,
             encoder_mask=src_mask,
         )
         import pudb; pudb.set_trace()
-        bridge_hiddens_enc, ortho_loss = self.att_bridge(
+
+        # build posterior distribution
+        z, z_mean, z_logv, ortho_loss = self.sample_z(
             hidden=src_hiddens,
             hidden_mask=src_mask,
             return_ortho_loss=True,
         )
-
-        # build posterior distribution
-        z, z_mean, z_logv = self.sample_z(bridge_hiddens_enc)
         q_z_given_x = torch.distributions.Normal(
             loc=z_mean,
             scale=torch.exp(0.5 * z_logv),
@@ -982,14 +997,21 @@ class MTMIMModel(MTEncDecModel):
 
         # build decoding distribution
         bridge_hiddens_dec = self.latent2hidden(z)
+        bridge_mask = torch.ones(z.shape[0:2]).to(src_mask)
         tgt_hiddens = self.decoder(
             input_ids=tgt,
             decoder_mask=tgt_mask,
             encoder_embeddings=bridge_hiddens_dec,
-            encoder_mask=src_mask,
+            encoder_mask=bridge_mask,
         )
 
-        log_p_x_given_z = -self.log_softmax(hidden_states=tgt_hiddens)
+        log_probs = -self.log_softmax(hidden_states=tgt_hiddens)
+
+        # FIXME: averaging of log_p_x_given_z is per token, not per sample
+        if train:
+            log_p_x_given_z = self.loss_fn(log_probs=log_probs, labels=labels)
+        else:
+            log_p_x_given_z = self.eval_loss_fn(log_probs=log_probs, labels=labels)
 
         loss = -(
             log_p_x_given_z + 0.5 * (log_q_z_given_x + log_p_z)
@@ -1032,3 +1054,48 @@ class MTMIMModel(MTEncDecModel):
         finally:
             self.train(mode=mode)
         return inputs, translations
+
+    def training_step(self, batch, batch_idx):
+        """
+        Lightning calls this inside the training loop with the data from the training dataloader
+        passed in as `batch`.
+        """
+        # forward pass
+        for i in range(len(batch)):
+            if batch[i].ndim == 3:
+                # Dataset returns already batched data and the first dimension of size 1 added by DataLoader
+                # is excess.
+                batch[i] = batch[i].squeeze(dim=0)
+        src_ids, src_mask, tgt_ids, tgt_mask, labels = batch
+        train_loss = self(src_ids, src_mask, tgt_ids, tgt_mask, labels, train=True)
+        tensorboard_logs = {
+            'train_loss': train_loss,
+            'lr': self._optimizer.param_groups[0]['lr'],
+        }
+        return {'loss': train_loss, 'log': tensorboard_logs}
+
+    def eval_step(self, batch, batch_idx, mode, dataloader_idx=0):
+        for i in range(len(batch)):
+            if batch[i].ndim == 3:
+                # Dataset returns already batched data and the first dimension of size 1 added by DataLoader
+                # is excess.
+                batch[i] = batch[i].squeeze(dim=0)
+        src_ids, src_mask, tgt_ids, tgt_mask, labels = batch
+        eval_loss = self(src_ids, src_mask, tgt_ids, tgt_mask, labels, train=False)
+        # this will run encoder twice -- TODO: potentially fix
+        _, translations = self.batch_translate(src=src_ids, src_mask=src_mask)
+        if dataloader_idx == 0:
+            getattr(self, f'{mode}_loss')(loss=eval_loss, num_measurements=log_probs.shape[0] * log_probs.shape[1])
+        else:
+            getattr(self, f'{mode}_loss_{dataloader_idx}')(
+                loss=eval_loss, num_measurements=(labels.shape[0] - 1) * (log_probs.shape[1]-1)
+            )
+        np_tgt = tgt_ids.detach().cpu().numpy()
+        ground_truths = [self.decoder_tokenizer.ids_to_text(tgt) for tgt in np_tgt]
+        ground_truths = [self.target_processor.detokenize(tgt.split(' ')) for tgt in ground_truths]
+        num_non_pad_tokens = np.not_equal(np_tgt, self.decoder_tokenizer.pad_id).sum().item()
+        return {
+            'translations': translations,
+            'ground_truths': ground_truths,
+            'num_non_pad_tokens': num_non_pad_tokens,
+        }
