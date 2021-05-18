@@ -25,7 +25,7 @@ python enc_dec_nmt-mim.py \
       +exp_manager.checkpoint_callback_params.save_top_k=10 \
       model.beam_size=1 \
       model.max_generation_delta=5 \
-      model.label_smoothing=0.1 \
+      model.label_smoothing=0.0 \
       model.src_language=es \
       model.tgt_language=en \
       model.model_type=mim \
