@@ -928,7 +928,7 @@ class MTMIMModel(MTEncDecModel):
             # else:
             #     self.latent2hidden = torch.nn.Identity()
         elif self.model_type == "ae":
-            self.latent2hidden = torch.Identity()
+            self.latent2hidden = torch.nn.Identity()
 
         self.att_bridge = AttentionBridge(
             hidden_size=self.encoder.hidden_size,
