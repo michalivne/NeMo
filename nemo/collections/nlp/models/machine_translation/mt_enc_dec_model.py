@@ -996,6 +996,7 @@ class MTMIMModel(MTEncDecModel):
             return_ortho_loss=True,
         )
 
+        import pudb; pudb.set_trace()
         # build decoding distribution
         bridge_hiddens_dec = self.latent2hidden(z)
         bridge_mask = torch.ones(z.shape[0:2]).to(src_mask)

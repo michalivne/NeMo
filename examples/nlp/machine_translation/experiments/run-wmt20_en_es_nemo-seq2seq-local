@@ -8,7 +8,7 @@ DEC_TOKENIZER=yttm
 python enc_dec_nmt.py \
       --config-path=conf \
       --config-name=aayn_base \
-      exp_manager.name=yttm-yttm \
+      exp_manager.name=seq2seq \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
       +trainer.max_steps=300000 \
