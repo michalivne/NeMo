@@ -28,7 +28,7 @@ python enc_dec_nmt-mim.py \
       model.label_smoothing=0.1 \
       model.src_language=es \
       model.tgt_language=en \
-      model.model_type=mim \
+      model.model_type=ae \
       model.latent_size=1024 \
       model.ortho_loss_coef=0.0 \
       model.att_bridge_k=30 \
