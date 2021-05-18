@@ -30,7 +30,7 @@ python enc_dec_nmt-mim.py \
       model.tgt_language=en \
       model.model_type=mim \
       model.latent_size=1024 \
-      model.ortho_loss_coef=1.0 \
+      model.ortho_loss_coef=0.0 \
       model.att_bridge_k=30 \
       model.att_bridge_size=4096 \
       model.encoder.hidden_size=1024 \
