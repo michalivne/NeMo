@@ -1019,17 +1019,24 @@ class MTMIMModel(MTEncDecModel):
                 loc=z_mean,
                 scale=torch.exp(0.5 * z_logv),
             )
-            log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
+            # FIXME: should sum over sentences
+            log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).mean(-1).mean()
+            # log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
 
             # build prior distribution
             p_z = torch.distributions.Normal(
                 loc=torch.zeros_like(z),
                 scale=torch.ones_like(z),
             )
-            log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
+            # FIXME: should sum over sentences
+            log_p_z = p_z.log_prob(z).sum(-1).mean(-1).mean()
+            # log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
 
+            batch_counter = getattr(self, "batch_counter", 0)
+            self.batch_counter = batch_counter+1
+            c = batch_counter / 100000
             loss = -(
-                log_p_x_given_z + 0.5 * (log_q_z_given_x + log_p_z)
+                log_p_x_given_z + c * 0.5 * (log_q_z_given_x + log_p_z)
             )
         elif self.model_type == "ae":
             loss = -log_p_x_given_z
