@@ -13,7 +13,7 @@ python enc_dec_nmt.py \
       '~trainer.max_epochs' \
       +trainer.max_steps=300000 \
       +trainer.val_check_interval=1000 \
-      +exp_manager.exp_dir=results/yttm-yttm \
+      +exp_manager.exp_dir=results \
       +exp_manager.resume_if_exists=True \
       +exp_manager.resume_ignore_no_checkpoint=True \
       +exp_manager.create_checkpoint_callback=True \
