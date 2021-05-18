@@ -915,12 +915,20 @@ class MTMIMModel(MTEncDecModel):
         #     active=True,
         # )
 
-        self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
-        # FIXME: use Identity when latent == hidden size?
-        # if (self.latent_size != self.encoder.hidden_size):
-        self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
-        # else:
-        #     self.latent2hidden = torch.nn.Identity()
+        if self.model_type not in ["mim", "ae"]:
+            raise ValueError("Unknown model_type = {model_type}".format(
+                model_type=self.model_type,
+            ))
+
+        if self.model_type == "mim":
+            self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
+            # FIXME: use Identity when latent == hidden size?
+            # if (self.latent_size != self.encoder.hidden_size):
+            self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
+            # else:
+            #     self.latent2hidden = torch.nn.Identity()
+        elif self.model_type == "ae":
+            self.latent2hidden = torch.Identity()
 
         self.att_bridge = AttentionBridge(
             hidden_size=self.encoder.hidden_size,
@@ -958,11 +966,16 @@ class MTMIMModel(MTEncDecModel):
 
         # parameters of posterior q(z|x)
         z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(bridge_hidden), 2, dim=-1)
-        # avoid numerical instability
-        z_logv = z_logv.clamp_min(self.min_logv)
-        # sample z with reparameterization
-        e = torch.randn_like(z_mean)
-        z = e * torch.exp(0.5 * z_logv) + z_mean
+
+        if self.model_type == "mim":
+            # avoid numerical instability
+            z_logv = z_logv.clamp_min(self.min_logv)
+            # sample z with reparameterization
+            e = torch.randn_like(z_mean)
+            z = e * torch.exp(0.5 * z_logv) + z_mean
+        if self.model_type == "ae":
+            z_logv = torch.ones_like(z_logv)
+            z = z_mean
 
         if return_ortho_loss:
             return z, z_mean, z_logv, ortho_loss
@@ -976,24 +989,12 @@ class MTMIMModel(MTEncDecModel):
             encoder_mask=src_mask,
         )
 
-        # build posterior distribution
+        # build posterior distribution q(x|z)
         z, z_mean, z_logv, ortho_loss = self.sample_z(
             hidden=src_hiddens,
             hidden_mask=src_mask,
             return_ortho_loss=True,
         )
-        q_z_given_x = torch.distributions.Normal(
-            loc=z_mean,
-            scale=torch.exp(0.5 * z_logv),
-        )
-        log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
-
-        # build prior distribution
-        p_z = torch.distributions.Normal(
-            loc=torch.zeros_like(z),
-            scale=torch.ones_like(z),
-        )
-        log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
 
         # build decoding distribution
         bridge_hiddens_dec = self.latent2hidden(z)
@@ -1005,17 +1006,36 @@ class MTMIMModel(MTEncDecModel):
             encoder_mask=bridge_mask,
         )
 
-        log_probs = -self.log_softmax(hidden_states=tgt_hiddens)
+        log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
         # FIXME: averaging of log_p_x_given_z is per token, not per sample
         if train:
-            log_p_x_given_z = self.loss_fn(log_probs=log_probs, labels=labels)
+            log_p_x_given_z = -self.loss_fn(log_probs=log_probs, labels=labels)
         else:
-            log_p_x_given_z = self.eval_loss_fn(log_probs=log_probs, labels=labels)
+            log_p_x_given_z = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
 
-        loss = -(
-            log_p_x_given_z + 0.5 * (log_q_z_given_x + log_p_z)
-        ) + self.ortho_loss_coef * ortho_loss
+        if self.model_type == "mim":
+            q_z_given_x = torch.distributions.Normal(
+                loc=z_mean,
+                scale=torch.exp(0.5 * z_logv),
+            )
+            log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
+
+            # build prior distribution
+            p_z = torch.distributions.Normal(
+                loc=torch.zeros_like(z),
+                scale=torch.ones_like(z),
+            )
+            log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
+
+            loss = -(
+                log_p_x_given_z + 0.5 * (log_q_z_given_x + log_p_z)
+            )
+        elif self.model_type == "ae":
+            loss = -log_p_x_given_z
+
+        # add attention orthogonality loss
+        loss = loss + self.ortho_loss_coef * ortho_loss
 
         return loss, log_p_x_given_z
 
