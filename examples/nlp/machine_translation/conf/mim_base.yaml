@@ -13,7 +13,7 @@ model:
   model_type: 'mim' # support mim, ae, vae
   latent_size: 512
   proj_type: 'z-proj'
-  min_logv: 1e-6
+  min_logv: -8
   ortho_loss_coef: 1.0
   att_bridge_k: 20
   att_bridge_size: 1024
