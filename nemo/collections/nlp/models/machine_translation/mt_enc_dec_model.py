@@ -1033,7 +1033,8 @@ class MTMIMModel(MTEncDecModel):
             # log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
 
             batch_counter = getattr(self, "batch_counter", 0)
-            self.batch_counter = batch_counter+1
+            if train:
+                self.batch_counter = batch_counter+1
             c = batch_counter / 100000
             loss_terms =  0.5 * (log_q_z_given_x + log_p_z)
             # show loss value for reconstruction but train MIM
