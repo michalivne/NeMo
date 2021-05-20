@@ -2,9 +2,9 @@ name: translationMIM
 do_training: True # set to False if only preprocessing data
 
 model:
-  beam_size: 1 # FIXME: currently will break conditional embeddings
-  len_pen: 0.6
-  max_generation_delta: 5
+  beam_size: 4
+  len_pen: 0.0
+  max_generation_delta: 30
   label_smoothing: 0.1
   shared_tokenizer: True # train tokenizer model across src and tgt train data
   preproc_out_dir: null # path to store data preprocessing outputs
@@ -17,6 +17,7 @@ model:
   ortho_loss_coef: 1.0
   att_bridge_k: 20
   att_bridge_size: 1024
+  non_recon_warmup_batches:
 
   train_ds:
     src_file_name: null

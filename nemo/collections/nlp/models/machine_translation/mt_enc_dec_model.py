@@ -47,7 +47,7 @@ from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.utils import logging, model_utils
 from nemo.collections.common.parts import form_attention_mask
 
-__all__ = ['MTEncDecModel']
+__all__ = ['MTEncDecModel', 'MTMIMModel']
 
 
 class MTEncDecModel(EncDecNLPModel):

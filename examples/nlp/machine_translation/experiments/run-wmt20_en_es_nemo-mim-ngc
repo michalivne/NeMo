@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+
+script_name=`basename $0`
+echo "${script_name} <SentenceMIM API key> <ENC_TOKENIZER> <DEC_TOKENIZER> <ENC_MODEL> <DEC_MODEL> <GPU_NUM>"
+
+GITHUB_KEY=$1
+ENC_MODEL=${4:-/raid/shared_tokenizer.32000.BPE.model}
+DEC_MODEL=${5:-/raid/shared_tokenizer.32000.BPE.model}
+GPU_NUM=${6:-8}
+LABEL_SMOOTHING=${7:-0.1}
+
+ENC_TOKENIZER=
+DEC_TOKENIZER=yttm
+INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
+NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
+
+EXP_NAME="en_es_wmt20-mim_lblsmth${LABEL_SMOOTHING}"
+EXP_NAME_NGC="${EXP_NAME} ml-model.aayn-tmim"
+
+
+WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
+PROJECT=${EXP_NAME}
+
+STEPS=300000
+VOCAB_SIZE=32000
+
+# command
+
+read -d '' cmd <<EOF
+nvidia-smi \
+&& apt-get update \
+&& apt-get install -y libsndfile1 ffmpeg \
+&& pip install --upgrade wandb \
+&& pip install Cython \
+&& wandb login ${WANDBLOGIN} \
+&& git clone https://github.com/michalivne/NeMo.git \
+&& cd NeMo/ \
+&& git checkout nmt-translationMIM \
+&& ./reinstall.sh \
+&& cd examples/nlp/machine_translation \
+&& cp -R /data/parallel/sharded_tarfiles_60_even/ /raid/ \
+&& cp -R /data/parallel/newstest2012-es-en.clean.tok.* /raid/ \
+&& cp -R /data/parallel/newstest2013-es-en.clean.tok.* /raid/ \
+&& python enc_dec_nmt.py \
+      --config-path=conf \
+      --config-name=mim_base \
+      exp_manager.name=tmim \
+      'trainer.gpus=-1' \
+      '~trainer.max_epochs' \
+      +trainer.max_steps=${STEPS} \
+      +trainer.val_check_interval=1000 \
+      +exp_manager.exp_dir=/results/wmt20_es_en_tmim \
+      +exp_manager.create_wandb_logger=True \
+      +exp_manager.wandb_logger_kwargs.name=${EXP_NAME} \
+      +exp_manager.wandb_logger_kwargs.project=${PROJECT} \
+      +exp_manager.resume_if_exists=True \
+      +exp_manager.resume_ignore_no_checkpoint=True \
+      +exp_manager.create_checkpoint_callback=True \
+      +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \
+      +exp_manager.checkpoint_callback_params.mode=max \
+      model.beam_size=4 \
+      model.max_generation_delta=30 \
+      model.label_smoothing=${LABEL_SMOOTHING} \
+      +model.src_language=es \
+      +model.tgt_language=en \
+      model.encoder.hidden_size=1024 \
+      model.encoder.inner_size=4096 \
+      model.encoder.num_attention_heads=16 \
+      model.encoder.attn_layer_dropout=0.1 \
+      model.encoder.ffn_dropout=0.1 \
+      model.encoder.num_layers=6 \
+      model.decoder.hidden_size=1024 \
+      model.decoder.inner_size=4096 \
+      model.decoder.num_attention_heads=16 \
+      model.decoder.attn_layer_dropout=0.1 \
+      model.decoder.ffn_dropout=0.1 \
+      model.decoder.num_layers=6 \
+      model.optim.lr=0.0004 \
+      model.encoder_tokenizer.tokenizer_model=/raid/sharded_tarfiles_60_even/tokenizer.32000.BPE.model \
+      model.decoder_tokenizer.tokenizer_model=/raid/sharded_tarfiles_60_even/tokenizer.32000.BPE.model \
+      model.encoder_tokenizer.bpe_dropout=0.1 \
+      model.decoder_tokenizer.bpe_dropout=0.1 \
+      model.train_ds.src_file_name=/raid/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
+      model.train_ds.tgt_file_name=/raid/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
+      model.train_ds.tokens_in_batch=16000 \
+      model.train_ds.metadata_path=/raid/sharded_tarfiles_60_even/metadata.json \
+      model.validation_ds.src_file_name=/raid/newstest2012-es-en.clean.tok.src \
+      model.validation_ds.tgt_file_name=/raid/newstest2012-es-en.clean.tok.ref \
+      model.test_ds.src_file_name=/raid/newstest2013-es-en.clean.tok.src \
+      model.test_ds.tgt_file_name=/raid/newstest2013-es-en.clean.tok.ref" \
+      model.train_ds.use_tarred_dataset=true \
+      do_training=true
+EOF
+
+# launch script
+set -e
+
+ngc batch run \
+  --name "${EXP_NAME_NGC}" \
+  --preempt RUNONCE \
+  --image "${NGC_CONTAINER}" \
+  --ace nv-us-west-2 \
+  --instance "${INSTANCE}" \
+  --org nvidian \
+  --team swdl-ai-apps \
+  --result /results/ \
+  --datasetid 73242:/data/ \
+  --commandline "${cmd}"

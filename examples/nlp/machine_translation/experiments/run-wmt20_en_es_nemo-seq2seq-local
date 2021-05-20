@@ -20,6 +20,8 @@ python enc_dec_nmt.py \
       +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \
       +exp_manager.checkpoint_callback_params.mode=max \
       +exp_manager.checkpoint_callback_params.save_top_k=10 \
+      +exp_manager.checkpoint_callback_params.always_save_nemo=true \
+      +exp_manager.checkpoint_callback_params.save_best_model=true \
       model.beam_size=4 \
       model.max_generation_delta=5 \
       model.label_smoothing=0.1 \
