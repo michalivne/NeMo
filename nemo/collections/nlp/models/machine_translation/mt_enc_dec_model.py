@@ -1035,6 +1035,7 @@ class MTMIMModel(MTEncDecModel):
             batch_counter = getattr(self, "batch_counter", 0)
             if train:
                 self.batch_counter = batch_counter+1
+            # FIXME: replace 100000 with a configuration parameter
             c = batch_counter / 100000
             loss_terms =  0.5 * (log_q_z_given_x + log_p_z)
             # show loss value for reconstruction but train MIM
