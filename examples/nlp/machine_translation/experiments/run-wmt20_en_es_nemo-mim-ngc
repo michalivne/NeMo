@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
 
 script_name=`basename $0`
-echo "${script_name} <SentenceMIM API key> <ENC_TOKENIZER> <DEC_TOKENIZER> <ENC_MODEL> <DEC_MODEL> <GPU_NUM>"
+echo "${script_name} <MODEL_TYPE> <LABEL_SMOOTHING> <GPU_NUM>"
 
-GITHUB_KEY=$1
-ENC_MODEL=${4:-/raid/shared_tokenizer.32000.BPE.model}
-DEC_MODEL=${5:-/raid/shared_tokenizer.32000.BPE.model}
-GPU_NUM=${6:-8}
-LABEL_SMOOTHING=${7:-0.1}
+MODEL_TYPE=${1:-mim}
+LABEL_SMOOTHING=${2:-0.0}
+GPU_NUM=${3:-8}
 
 ENC_TOKENIZER=
 DEC_TOKENIZER=yttm
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
-EXP_NAME="en_es_wmt20-mim_lblsmth${LABEL_SMOOTHING}"
+EXP_NAME="en_es_wmt20-${MODEL_TYPE}_lblsmth${LABEL_SMOOTHING}"
 EXP_NAME_NGC="${EXP_NAME} ml-model.aayn-tmim"
 
 
@@ -41,7 +39,7 @@ nvidia-smi \
 && cp -R /data/parallel/sharded_tarfiles_60_even/ /raid/ \
 && cp -R /data/parallel/newstest2012-es-en.clean.tok.* /raid/ \
 && cp -R /data/parallel/newstest2013-es-en.clean.tok.* /raid/ \
-&& python enc_dec_nmt.py \
+&& python enc_dec_nmt-mim.py \
       --config-path=conf \
       --config-name=mim_base \
       exp_manager.name=tmim \
@@ -63,6 +61,11 @@ nvidia-smi \
       model.label_smoothing=${LABEL_SMOOTHING} \
       +model.src_language=es \
       +model.tgt_language=en \
+      model.model_type=${MODEL_TYPE} \
+      model.latent_size=1024 \
+      model.ortho_loss_coef=0.0 \
+      model.att_bridge_k=30 \
+      model.att_bridge_size=4096 \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \

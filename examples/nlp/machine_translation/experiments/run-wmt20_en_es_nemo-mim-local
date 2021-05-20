@@ -5,9 +5,6 @@
 WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
 PROJECT=tMIM-mim
 
-ENC_TOKENIZER=yttm
-DEC_TOKENIZER=yttm
-
 python enc_dec_nmt-mim.py \
       --config-path=conf \
       --config-name=mim_base \
