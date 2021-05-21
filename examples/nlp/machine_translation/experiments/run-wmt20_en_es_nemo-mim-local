@@ -22,8 +22,8 @@ python enc_dec_nmt-mim.py \
       +exp_manager.checkpoint_callback_params.save_top_k=10 \
       +exp_manager.checkpoint_callback_params.always_save_nemo=true \
       +exp_manager.checkpoint_callback_params.save_best_model=true \
-      model.beam_size=1 \
-      model.max_generation_delta=5 \
+      model.beam_size=4 \
+      model.max_generation_delta=30 \
       model.label_smoothing=0.0 \
       model.src_language=es \
       model.tgt_language=en \
