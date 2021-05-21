@@ -1134,7 +1134,6 @@ class MTMIMModel(MTEncDecModel):
 
         if self.model_type == "mim":
             tokens = tgt_mask.sum()
-            import pudb; pudb.set_trace()
             q_z_given_x = torch.distributions.Normal(
                 loc=z_mean,
                 scale=torch.exp(0.5 * z_logv),
