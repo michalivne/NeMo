@@ -60,8 +60,8 @@ nvidia-smi \
       model.beam_size=4 \
       model.max_generation_delta=30 \
       model.label_smoothing=${LABEL_SMOOTHING} \
-      +model.src_language=es \
-      +model.tgt_language=en \
+      model.src_language=es \
+      model.tgt_language=en \
       model.model_type=${MODEL_TYPE} \
       model.latent_size=1024 \
       model.ortho_loss_coef=0.0 \
