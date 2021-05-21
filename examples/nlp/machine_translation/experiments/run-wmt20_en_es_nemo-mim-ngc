@@ -26,6 +26,7 @@ VOCAB_SIZE=32000
 
 read -d '' cmd <<EOF
 nvidia-smi \
+&& export DEBIAN_FRONTEND=noninteractive \
 && apt-get update \
 && apt-get install -y libsndfile1 ffmpeg \
 && pip install --upgrade wandb \
@@ -56,7 +57,7 @@ nvidia-smi \
       +exp_manager.create_checkpoint_callback=True \
       +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \
       +exp_manager.checkpoint_callback_params.mode=max \
-      model.beam_size=1 \
+      model.beam_size=4 \
       model.max_generation_delta=30 \
       model.label_smoothing=${LABEL_SMOOTHING} \
       +model.src_language=es \
