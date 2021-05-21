@@ -105,7 +105,7 @@ ngc batch run \
   --ace nv-us-west-2 \
   --instance "${INSTANCE}" \
   --org nvidian \
-  --team onboarding \
+  --team ac-aiapps \
   --result /results/ \
   --datasetid 73242:/data/ \
   --commandline "${cmd}"
