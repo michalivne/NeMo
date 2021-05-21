@@ -1024,7 +1024,7 @@ class MTMIMModel(MTEncDecModel):
         self.ortho_loss_coef: float = cfg.get("ortho_loss_coef", 1.0)
         self.att_bridge_k: int = cfg.get("att_bridge_k", 20)
         self.att_bridge_size: int = cfg.get("att_bridge_size", 1024)
-        self.non_recon_warmup_batches: int = cfg.get("non_recon_warmup_batches", 1000000)
+        self.non_recon_warmup_batches: int = cfg.get("non_recon_warmup_batches", 500000)
 
         # self.cond_emb = self.decoder.embedding.token_embedding = ConditionalEmbedding(
         #     emb=self.decoder._embedding.token_embedding,
