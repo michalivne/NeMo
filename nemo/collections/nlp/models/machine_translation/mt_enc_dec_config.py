@@ -141,3 +141,4 @@ class MTMIMModelConfig(AAYNBaseConfig):
     ortho_loss_coef: float = 1.0
     att_bridge_k: int = 20
     att_bridge_size: int = 1024
+    non_recon_warmup_batches: int = 1000000
