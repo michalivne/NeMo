@@ -37,7 +37,7 @@ def main():
     parser.add_argument("--srctext", type=str, required=True, help="")
     parser.add_argument("--tgtout", type=str, required=True, help="")
     parser.add_argument("--batch_size", type=int, default=256, help="")
-    parser.add_argument("--beam_size", type=int, default=4, help="")
+    parser.add_argument("--beam_size", type=int, default=1, help="")
     parser.add_argument("--len_pen", type=float, default=0.0, help="")
     parser.add_argument("--max_delta_length", type=int, default=30, help="")
     parser.add_argument("--target_lang", type=str, default=None, help="")
