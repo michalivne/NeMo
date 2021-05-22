@@ -8,7 +8,7 @@ PROJECT=tMIM-mim
 python enc_dec_nmt-mim.py \
       --config-path=conf \
       --config-name=mim_base \
-      exp_manager.name=t-mim \
+      exp_manager.name=t-mim-no-ls \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
       +trainer.max_steps=300000 \
