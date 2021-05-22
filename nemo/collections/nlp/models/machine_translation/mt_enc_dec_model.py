@@ -1133,15 +1133,15 @@ class MTMIMModel(MTEncDecModel):
             log_p_x_given_z = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
 
         if self.model_type == "mim":
-            tokens = tgt_mask.sum()
+            # tokens = tgt_mask.sum()
             q_z_given_x = torch.distributions.Normal(
                 loc=z_mean,
                 scale=torch.exp(0.5 * z_logv),
             )
             # FIXME: should sum over sentences
-            # log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).mean(-1).mean()
+            log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).mean(-1).mean()
             # log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
-            log_q_z_given_x = q_z_given_x.log_prob(z).sum() / tokens
+            # log_q_z_given_x = q_z_given_x.log_prob(z).sum() / tokens
 
             # build prior distribution
             p_z = torch.distributions.Normal(
@@ -1149,9 +1149,9 @@ class MTMIMModel(MTEncDecModel):
                 scale=torch.ones_like(z),
             )
             # FIXME: should sum over sentences
-            # log_p_z = p_z.log_prob(z).sum(-1).mean(-1).mean()
+            log_p_z = p_z.log_prob(z).sum(-1).mean(-1).mean()
             # log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
-            log_p_z = p_z.log_prob(z).sum() / tokens
+            # log_p_z = p_z.log_prob(z).sum() / tokens
 
             batch_counter = getattr(self, "batch_counter", 0)
             if train:
