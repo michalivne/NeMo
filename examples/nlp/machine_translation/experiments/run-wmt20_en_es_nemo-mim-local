@@ -11,7 +11,7 @@ python enc_dec_nmt-mim.py \
       exp_manager.name=t-mim-no-ls \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
-      +trainer.max_steps=300000 \
+      +trainer.max_steps=600000 \
       +trainer.val_check_interval=1000 \
       +exp_manager.exp_dir=results \
       +exp_manager.resume_if_exists=True \
