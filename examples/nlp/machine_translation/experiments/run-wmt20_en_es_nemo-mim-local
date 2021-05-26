@@ -15,6 +15,7 @@ python enc_dec_nmt-mim.py \
       +trainer.val_check_interval=1000 \
       +exp_manager.exp_dir=results \
       +exp_manager.resume_if_exists=True \
+      +exp_manager.resume_past_end=True \
       +exp_manager.resume_ignore_no_checkpoint=True \
       +exp_manager.create_checkpoint_callback=True \
       +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \

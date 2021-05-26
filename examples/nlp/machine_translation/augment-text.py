@@ -9,6 +9,8 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 import numpy as np
 
+# TODO: add drop word
+
 #=============================================================================#
 # Augmentations
 #=============================================================================#
