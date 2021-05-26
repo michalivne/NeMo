@@ -332,7 +332,11 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
             scores = scores + scores_i * (1 - pad_mask).to(scores.dtype)
 
             # choose top-k hypotheses with length penalty applied
-            len_penalties = self.compute_len_penalty(prefixes_len, self.len_pen)
+            # FIXME: REMOVE ME
+            if hasattr(self, "fixed_len_penaly"):
+                len_penalties = self.fixed_len_penaly
+            else:
+                len_penalties = self.compute_len_penalty(prefixes_len, self.len_pen)
             scores = scores / len_penalties
             scores, indices_i = torch.topk(scores.view(-1, self.beam_size ** 2), self.beam_size, dim=1)
             scores = scores.view(-1, 1) * len_penalties
@@ -366,7 +370,11 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
                 break
 
         # select best performing hypotheses in each element of the batch
-        len_penalties = self.compute_len_penalty(prefixes_len, self.len_pen)
+        # FIXME: REMOVE ME
+        if hasattr(self, "fixed_len_penaly"):
+            len_penalties = self.fixed_len_penaly
+        else:
+            len_penalties = self.compute_len_penalty(prefixes_len, self.len_pen)
         scores = scores / len_penalties
         best_guesses = (
             torch.argmax(scores.view(-1, self.beam_size), dim=1, keepdim=True).repeat(1, prefixes.size(1)).unsqueeze(1)
