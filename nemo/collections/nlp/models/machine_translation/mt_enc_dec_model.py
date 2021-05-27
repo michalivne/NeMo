@@ -1137,6 +1137,7 @@ class MTMIMModel(MTEncDecModel):
         output_mask = (labels != self.decoder_tokenizer.pad_id).type_as(log_probs)
         batch_size = output_mask.shape[0]
         tokens = output_mask.sum()
+        log_p_x_given_z_per_token = log_p_x_given_z.detach()
         log_p_x_given_z = log_p_x_given_z * tokens / batch_size
 
         if self.model_type == "mim":
@@ -1167,10 +1168,10 @@ class MTMIMModel(MTEncDecModel):
             loss_terms =  0.5 * (log_q_z_given_x + log_p_z)
             # show loss value for reconstruction but train MIM
             loss = -(
-                log_p_x_given_z + c * (loss_terms - loss_terms.detach())
+                (log_p_x_given_z - log_p_x_given_z.detach() +log_p_x_given_z_per_token )  + c * (loss_terms - loss_terms.detach())
             )
         elif self.model_type == "ae":
-            loss = -log_p_x_given_z
+            loss = - (log_p_x_given_z - log_p_x_given_z.detach() +log_p_x_given_z_per_token )
 
         # add attention orthogonality loss
         loss = loss + self.ortho_loss_coef * ortho_loss
