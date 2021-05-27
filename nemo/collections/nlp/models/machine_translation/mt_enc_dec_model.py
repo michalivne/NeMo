@@ -1127,12 +1127,17 @@ class MTMIMModel(MTEncDecModel):
 
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
-        # FIXME: averaging of log_p_x_given_z is per token, not per sample
-        import pudb; pudb.set_trace()
         if train:
             log_p_x_given_z = -self.loss_fn(log_probs=log_probs, labels=labels)
         else:
             log_p_x_given_z = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
+
+
+        # correct averaging of log_p_x_given_z per token to be per sample
+        output_mask = (labels != self.decoder_tokenizer.pad_id).type_as(log_probs)
+        batch_size = output_mask.shape[0]
+        tokens = output_mask.sum()
+        log_p_x_given_z = log_p_x_given_z * tokens / batch_size
 
         if self.model_type == "mim":
             # tokens = tgt_mask.sum()
@@ -1140,9 +1145,9 @@ class MTMIMModel(MTEncDecModel):
                 loc=z_mean,
                 scale=torch.exp(0.5 * z_logv),
             )
-            # FIXME: should sum over sentences
-            log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).mean(-1).mean()
-            # log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
+            # should sum over sentences
+            # log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).mean(-1).mean()
+            log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
             # log_q_z_given_x = q_z_given_x.log_prob(z).sum() / tokens
 
             # build prior distribution
@@ -1150,9 +1155,9 @@ class MTMIMModel(MTEncDecModel):
                 loc=torch.zeros_like(z),
                 scale=torch.ones_like(z),
             )
-            # FIXME: should sum over sentences
-            log_p_z = p_z.log_prob(z).sum(-1).mean(-1).mean()
-            # log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
+            # should sum over sentences
+            # log_p_z = p_z.log_prob(z).sum(-1).mean(-1).mean()
+            log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
             # log_p_z = p_z.log_prob(z).sum() / tokens
 
             batch_counter = getattr(self, "batch_counter", 0)
