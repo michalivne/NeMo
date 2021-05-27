@@ -332,9 +332,8 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
             scores = scores + scores_i * (1 - pad_mask).to(scores.dtype)
 
             # choose top-k hypotheses with length penalty applied
-            # FIXME: REMOVE ME
             if hasattr(self, "fixed_len_penaly"):
-                len_penalties = (prefixes_len + 1) / self.fixed_len_penaly
+                len_penalties = self.fixed_len_penaly
             else:
                 len_penalties = self.compute_len_penalty(prefixes_len, self.len_pen)
             scores = scores / len_penalties
@@ -370,9 +369,8 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
                 break
 
         # select best performing hypotheses in each element of the batch
-        # FIXME: REMOVE ME
         if hasattr(self, "fixed_len_penaly"):
-            len_penalties = (prefixes_len + 1) / self.fixed_len_penaly
+            len_penalties = self.fixed_len_penaly
         else:
             len_penalties = self.compute_len_penalty(prefixes_len, self.len_pen)
         scores = scores / len_penalties

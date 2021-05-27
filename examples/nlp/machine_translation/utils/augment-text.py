@@ -77,7 +77,8 @@ def main():
             words = line.split(" ")
             for op in ops:
                 words = list(map(op, words))
-            line = " ".join(words)
+            # clean double spaces from dropped words
+            line = " ".join(words).replace("  ", " ")
 
             target_f.write(line + "\n")
 
