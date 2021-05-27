@@ -288,7 +288,7 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
         # FIXME: REMOVE ME
         if hasattr(self, "fixed_len_penaly"):
             len_penalties = self.fixed_len_penaly
-            log_probs[:, :, 3] = log_probs[:, :, 3] / len_penalties
+            log_probs[:, :, 3] = log_probs[:, :, 3] * len_penalties
 
         scores, prefixes = torch.topk(log_probs.permute(0, 2, 1), self.beam_size, dim=1)
         scores, prefixes = scores.view(-1, 1), prefixes.view(-1, 1)
@@ -328,7 +328,7 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
             # FIXME: REMOVE ME
             if hasattr(self, "fixed_len_penaly"):
                 len_penalties = self.fixed_len_penaly
-                log_probs[:, :, 3] = log_probs[:, :, 3] / len_penalties
+                log_probs[:, :, 3] = log_probs[:, :, 3] * len_penalties
 
             scores_i, prefixes_i = torch.topk(log_probs[:, -1, :], self.beam_size, dim=-1)
 
