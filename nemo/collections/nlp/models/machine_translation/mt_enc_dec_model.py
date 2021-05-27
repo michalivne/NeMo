@@ -164,6 +164,7 @@ class MTEncDecModel(EncDecNLPModel):
             use_transformer_init=cfg.head.use_transformer_init,
         )
 
+        # TODO: replace with top-k sampling (in config)
         self.beam_search = BeamSearchSequenceGenerator(
             embedding=self.decoder.embedding,
             decoder=self.decoder.decoder,

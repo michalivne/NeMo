@@ -12,7 +12,7 @@ DEC_TOKENIZER=yttm
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
-EXP_NAME="en_es_wmt20-${MODEL_TYPE}_lblsmth${LABEL_SMOOTHING}"
+EXP_NAME="en_es_wmt20-${MODEL_TYPE}_ls${LABEL_SMOOTHING}"
 EXP_NAME_NGC="${EXP_NAME} ml-model.aayn-tmim"
 
 
@@ -21,6 +21,7 @@ PROJECT=${EXP_NAME}
 
 STEPS=600000
 VOCAB_SIZE=32000
+DATA_ID=73242
 
 # command
 
@@ -108,5 +109,5 @@ ngc batch run \
   --org nvidian \
   --team swdl-ai-apps \
   --result /results/ \
-  --datasetid 73242:/data/ \
+  --datasetid ${DATA_ID}:/data/ \
   --commandline "${cmd}"

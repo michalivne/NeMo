@@ -335,6 +335,7 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
             # FIXME: REMOVE ME
             if hasattr(self, "fixed_len_penaly"):
                 len_penalties = self.fixed_len_penaly
+                import pudb; pudb.set_trace()
             else:
                 len_penalties = self.compute_len_penalty(prefixes_len, self.len_pen)
             scores = scores / len_penalties
