@@ -1128,6 +1128,7 @@ class MTMIMModel(MTEncDecModel):
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
         # FIXME: averaging of log_p_x_given_z is per token, not per sample
+        import pudb; pudb.set_trace()
         if train:
             log_p_x_given_z = -self.loss_fn(log_probs=log_probs, labels=labels)
         else:
