@@ -284,6 +284,12 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
 
         # generate initial buffer of beam_size prefixes-hypotheses
         log_probs, decoder_mems_list = self._one_step_forward(tgt, encoder_hidden_states, encoder_input_mask, None, 0)
+
+        # FIXME: REMOVE ME
+        if hasattr(self, "fixed_len_penaly"):
+            len_penalties = self.fixed_len_penaly
+            log_probs[:, :, 3] = log_probs[:, :, 3] / len_penalties
+
         scores, prefixes = torch.topk(log_probs.permute(0, 2, 1), self.beam_size, dim=1)
         scores, prefixes = scores.view(-1, 1), prefixes.view(-1, 1)
 
@@ -319,6 +325,11 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
             log_probs, decoder_mems_list = self._one_step_forward(
                 prefixes[:, -1:], encoder_hidden_states, encoder_input_mask, decoder_mems_list, i + 1
             )
+            # FIXME: REMOVE ME
+            if hasattr(self, "fixed_len_penaly"):
+                len_penalties = self.fixed_len_penaly
+                log_probs[:, :, 3] = log_probs[:, :, 3] / len_penalties
+
             scores_i, prefixes_i = torch.topk(log_probs[:, -1, :], self.beam_size, dim=-1)
 
             # for all prefixes ending with <eos> or <pad> replace generated
@@ -335,7 +346,6 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
             # FIXME: REMOVE ME
             if hasattr(self, "fixed_len_penaly"):
                 len_penalties = self.fixed_len_penaly
-                import pudb; pudb.set_trace()
             else:
                 len_penalties = self.compute_len_penalty(prefixes_len, self.len_pen)
             scores = scores / len_penalties
