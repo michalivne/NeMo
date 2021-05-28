@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 
 script_name=`basename $0`
-echo "${script_name} <ATT_BRIDGE_K> <MODEL_TYPE> <LABEL_SMOOTHING> <GPU_NUM>"
+echo "${script_name} <ATT_BRIDGE_K> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <GPU_NUM>"
 
 ATT_BRIDGE_K=${1:-30}
 MODEL_TYPE=${2:-mim}
-LABEL_SMOOTHING=${3:-0.0}
-GPU_NUM=${4:-8}
+RECON=${3:-true}
+LABEL_SMOOTHING=${4:-0.0}
+GPU_NUM=${5:-8}
 
 ENC_TOKENIZER=
 DEC_TOKENIZER=yttm
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
-EXP_NAME="en_es_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_ls${LABEL_SMOOTHING}"
+EXP_NAME="en_es_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_ls${LABEL_SMOOTHING}"
 EXP_NAME_NGC="${EXP_NAME} ml-model.aayn-tmim"
 
 
@@ -69,7 +70,7 @@ nvidia-smi \
       model.ortho_loss_coef=0.0 \
       model.att_bridge_k=${ATT_BRIDGE_K} \
       model.att_bridge_size=2048 \
-      model.recon_per_token=false \
+      model.recon_per_token=${RECON} \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \
