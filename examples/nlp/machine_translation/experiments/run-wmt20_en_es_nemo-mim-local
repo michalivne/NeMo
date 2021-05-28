@@ -3,17 +3,18 @@
 # command
 
 WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
-PROJECT=tMIM-mim
+PROJECT=tMIM
+EXP_NAME=t-mim-no-ls-recon-true
 
 python enc_dec_nmt-mim.py \
       --config-path=conf \
       --config-name=mim_base \
-      exp_manager.name=t-mim-no-ls-recon \
+      exp_manager.name=${EXP_NAME} \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
       +trainer.max_steps=600000 \
       +trainer.val_check_interval=1000 \
-      +exp_manager.exp_dir=results \
+      +exp_manager.exp_dir=results/${PROJECT} \
       +exp_manager.resume_if_exists=True \
       +exp_manager.resume_past_end=True \
       +exp_manager.resume_ignore_no_checkpoint=True \
@@ -33,7 +34,7 @@ python enc_dec_nmt-mim.py \
       model.ortho_loss_coef=0.0 \
       model.att_bridge_k=30 \
       model.att_bridge_size=2048 \
-      model.recon_per_token=false \
+      model.recon_per_token=true \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \

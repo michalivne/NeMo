@@ -1132,9 +1132,9 @@ class MTMIMModel(MTEncDecModel):
 
         if self.recon_per_token:
             if train:
-                log_p_x_given_z_token = -self.loss_fn(log_probs=log_probs, labels=labels)
+                log_p_x_given_z_per_token = -self.loss_fn(log_probs=log_probs, labels=labels)
             else:
-                log_p_x_given_z_token = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
+                log_p_x_given_z_per_token = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
 
             log_p_x_given_z = log_p_x_given_z_per_token
             log_p_x_given_z_per_token = log_p_x_given_z_per_token.detach()
