@@ -33,7 +33,7 @@ python enc_dec_nmt-mim.py \
       model.ortho_loss_coef=0.0 \
       model.att_bridge_k=30 \
       model.att_bridge_size=2048 \
-      model.recon_per_token=true \
+      model.recon_per_token=false \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \

@@ -1030,6 +1030,13 @@ class MTMIMModel(MTEncDecModel):
         self.non_recon_warmup_batches: int = cfg.get("non_recon_warmup_batches", 500000)
         self.recon_per_token: bool = cfg.get("recon_per_token", True)
 
+        if not self.recon_per_token:
+            loss_fn = NLLLoss(
+                ignore_index=self.decoder_tokenizer.pad_id,
+                reduction='none',
+            )
+            self.loss_fn = self.eval_loss_fn = loss_fn
+
         # self.cond_emb = self.decoder.embedding.token_embedding = ConditionalEmbedding(
         #     emb=self.decoder._embedding.token_embedding,
         #     latent_size=self.latent_size,
@@ -1123,14 +1130,15 @@ class MTMIMModel(MTEncDecModel):
 
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
-        if train:
-            log_p_x_given_z_token = -self.loss_fn(log_probs=log_probs, labels=labels)
-        else:
-            log_p_x_given_z_token = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
-
         if self.recon_per_token:
+            if train:
+                log_p_x_given_z_token = -self.loss_fn(log_probs=log_probs, labels=labels)
+            else:
+                log_p_x_given_z_token = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
+
             log_p_x_given_z = log_p_x_given_z_per_token
         else:
+            import pudb; pudb.set_trace()
             # correct averaging of log_p_x_given_z per token to be per sample
             output_mask = (labels != self.decoder_tokenizer.pad_id).type_as(log_probs)
             batch_size = output_mask.shape[0]
