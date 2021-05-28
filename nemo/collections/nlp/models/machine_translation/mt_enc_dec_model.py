@@ -1042,15 +1042,8 @@ class MTMIMModel(MTEncDecModel):
                 model_type=self.model_type,
             ))
 
-        # if self.model_type == "mim":
         self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
-        # FIXME: use Identity when latent == hidden size?
-        # if (self.latent_size != self.encoder.hidden_size):
         self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
-        # else:
-        #     self.latent2hidden = torch.nn.Identity()
-        # elif self.model_type == "ae":
-        #     self.latent2hidden = torch.nn.Identity()
 
         self.att_bridge = AttentionBridge(
             hidden_size=self.encoder.hidden_size,

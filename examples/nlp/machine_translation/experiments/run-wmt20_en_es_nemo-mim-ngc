@@ -66,8 +66,9 @@ nvidia-smi \
       model.model_type=${MODEL_TYPE} \
       model.latent_size=1024 \
       model.ortho_loss_coef=0.0 \
-      model.att_bridge_k=30 \
-      model.att_bridge_size=4096 \
+      model.att_bridge_k=60 \
+      model.att_bridge_size=2048 \
+      model.recon_per_token=true \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \
@@ -88,12 +89,12 @@ nvidia-smi \
       model.train_ds.src_file_name=/raid/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
       model.train_ds.tgt_file_name=/raid/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
       model.train_ds.tokens_in_batch=16000 \
-      +model.train_ds.metadata_path=/raid/sharded_tarfiles_60_even/metadata.json \
+      model.train_ds.use_tarred_dataset=true \
+      model.train_ds.metadata_path=/raid/sharded_tarfiles_60_even/metadata.json \
       model.validation_ds.src_file_name=/raid/newstest2012-es-en.clean.tok.src \
       model.validation_ds.tgt_file_name=/raid/newstest2012-es-en.clean.tok.ref \
       model.test_ds.src_file_name=/raid/newstest2013-es-en.clean.tok.src \
       model.test_ds.tgt_file_name=/raid/newstest2013-es-en.clean.tok.ref \
-      model.train_ds.use_tarred_dataset=true \
       do_training=true
 EOF
 
