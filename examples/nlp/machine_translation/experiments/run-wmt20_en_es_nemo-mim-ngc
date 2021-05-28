@@ -60,6 +60,7 @@ nvidia-smi \
       +exp_manager.create_checkpoint_callback=True \
       +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \
       +exp_manager.checkpoint_callback_params.mode=max \
+      +exp_manager.checkpoint_callback_params.save_top_k=1 \
       model.beam_size=4 \
       model.max_generation_delta=30 \
       model.label_smoothing=${LABEL_SMOOTHING} \
@@ -88,11 +89,10 @@ nvidia-smi \
       model.decoder_tokenizer.tokenizer_model=/raid/sharded_tarfiles_60_even/tokenizer.32000.BPE.model \
       model.encoder_tokenizer.bpe_dropout=0.1 \
       model.decoder_tokenizer.bpe_dropout=0.1 \
-      model.train_ds.src_file_name=/raid/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
-      model.train_ds.tgt_file_name=/raid/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
+      model.train_ds.tar_files=/raid/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
+      model.train_ds.metadata_file=/raid/sharded_tarfiles_60_even/metadata.json \
       model.train_ds.tokens_in_batch=16000 \
       model.train_ds.use_tarred_dataset=true \
-      model.train_ds.metadata_file=/raid/sharded_tarfiles_60_even/metadata.json \
       model.validation_ds.src_file_name=/raid/newstest2012-es-en.clean.tok.src \
       model.validation_ds.tgt_file_name=/raid/newstest2012-es-en.clean.tok.ref \
       model.test_ds.src_file_name=/raid/newstest2013-es-en.clean.tok.src \
