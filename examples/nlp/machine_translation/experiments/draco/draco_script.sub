@@ -1,19 +1,19 @@
 #!/bin/bash
-#SBATCH -A ent_aiapps_asr
+#SBATCH -A ent_aiapps_nlp
 #SBATCH -p batch_32GB           # batch, batch_16GB, Backfill... Check draco onboarding guide.
-#SBATCH -N 8                    # number of nodes
+#SBATCH -N 1                    # number of nodes
 #SBATCH -t 8:00:00              # wall time
 #SBATCH --exclusive             # exclusive node access
 #SBATCH --gres=gpu:8            # Specify the number of GPUs even if exclusive
 #SBATCH --mem=0                 # all mem avail
 #SBATCH --mail-type=FAIL        # only send email on failure
-#SBATCH --ntasks-per-node=8     # n tasks per machine
+#SBATCH --ntasks-per-node=1     # n tasks per machine
 #SBATCH --overcommit            # Needed for pytorch
 set -x
 
 
 INIT_MODEL=''
-PROJECT_NAME=librispeech_rnnt_s
+PROJECT_NAME=tmim
 
 TRAIN_BATCH_SIZE=32
 EVAL_BATCH_SIZE=32
@@ -210,3 +210,13 @@ srun -J $EXP_NAME -o $OUTFILE -e $ERRFILE \
   $MOUNTS \
   bash -c "${cmd}"
 set +
+
+srun \
+    --pty \
+    --ntasks-per-node=1 \
+    --comment='nv-meta:(ml-model:)' \
+    --job-name=Interactive_InteractiveShell_20210316-125039 \
+    --cpus-per-task=12 \
+    --container-image=gitlab-master.nvidia.com#adlr/mchrzanowski/nemo:v6 \
+    --container-mounts=/home/mchrzanowski:/home/mchrzanowski,/home/dcg-adlr-utils/python:/home/dcg-adlr-utils/python,/home/dcg-adlr-mchrzanowski-chidesign-output/logs/Interactive_InteractiveShell_20210316-125039:/home/dcg-adlr-mchrzanowski-chidesign-output/logs/Interactive_InteractiveShell_20210316-125039,/home/mchrzanowski:/home/mchrzanowski,/home/dcg-adlr-utils/adlr-utils/release/cluster-interface/8.07:/home/dcg-adlr-utils/adlr-utils/release/cluster-interface/8.07,/home/dcg-adlr-utils/adlr-utils/release/cluster-interface/latest:/home/dcg-adlr-utils/adlr-utils/release/cluster-interface/latest,/home/mchrzanowski:/home/mchrzanowski,/home/dcg-adlr-mchrzanowski-chidesign-data:/home/dcg-adlr-mchrzanowski-chidesign-data,/home/dcg-adlr-mchrzanowski-source:/home/dcg-adlr-mchrzanowski-source,/home/dcg-adlr-mchrzanowski-chidesign-output:/home/dcg-adlr-mchrzanowski-chidesign-output,/home/dcg-adlr-sgodil-data.cosmos233:/home/dcg-adlr-sgodil-data.cosmos233 \
+    bash -c "${cmd}"
