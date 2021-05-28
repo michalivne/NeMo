@@ -142,3 +142,4 @@ class MTMIMModelConfig(AAYNBaseConfig):
     att_bridge_k: int = 20
     att_bridge_size: int = 1024
     non_recon_warmup_batches: int = 500000
+    recon_per_token: bool = True

@@ -18,6 +18,7 @@ model:
   att_bridge_k: 20
   att_bridge_size: 1024
   non_recon_warmup_batches: 500000
+  recon_per_token: true
 
   train_ds:
     src_file_name: null

@@ -970,13 +970,15 @@ class AttentionBridge(torch.nn.Module):
         """
         hidden_size - size of input hidden state
         k - number of attention heads
-        bridge_size - size of internal feed forward weights
+        bridge_size - size of internal feed forward weights (i.e., attention head size)
         """
         super().__init__()
 
         self.hidden_size = hidden_size
         self.k = k
         self.bridge_size = bridge_size
+
+        self.attn_scale = math.sqrt(math.sqrt(self.bridge_size))
 
         # build model
 
@@ -992,7 +994,7 @@ class AttentionBridge(torch.nn.Module):
                               orthogonal attention vectors
         """
 
-        attention_scores = self.W2(self.act(self.W1(hidden))).transpose(-1, -2)
+        attention_scores = self.W2(self.act(self.W1(hidden) / self.attn_scale) / self.attn_scale).transpose(-1, -2)
 
         attention_mask = form_attention_mask(hidden_mask)
         if attention_mask is not None:
@@ -1026,6 +1028,7 @@ class MTMIMModel(MTEncDecModel):
         self.att_bridge_k: int = cfg.get("att_bridge_k", 20)
         self.att_bridge_size: int = cfg.get("att_bridge_size", 1024)
         self.non_recon_warmup_batches: int = cfg.get("non_recon_warmup_batches", 500000)
+        self.recon_per_token: bool = cfg.get("recon_per_token", True)
 
         # self.cond_emb = self.decoder.embedding.token_embedding = ConditionalEmbedding(
         #     emb=self.decoder._embedding.token_embedding,
@@ -1128,17 +1131,20 @@ class MTMIMModel(MTEncDecModel):
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
 
         if train:
-            log_p_x_given_z = -self.loss_fn(log_probs=log_probs, labels=labels)
+            log_p_x_given_z_token = -self.loss_fn(log_probs=log_probs, labels=labels)
         else:
-            log_p_x_given_z = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
+            log_p_x_given_z_token = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
 
+        if self.recon_per_token:
+            log_p_x_given_z = log_p_x_given_z_per_token
+        else:
+            # correct averaging of log_p_x_given_z per token to be per sample
+            output_mask = (labels != self.decoder_tokenizer.pad_id).type_as(log_probs)
+            batch_size = output_mask.shape[0]
+            tokens = output_mask.sum()
+            log_p_x_given_z = log_p_x_given_z_per_token * tokens / batch_size
 
-        # correct averaging of log_p_x_given_z per token to be per sample
-        output_mask = (labels != self.decoder_tokenizer.pad_id).type_as(log_probs)
-        batch_size = output_mask.shape[0]
-        tokens = output_mask.sum()
-        log_p_x_given_z_per_token = log_p_x_given_z.detach()
-        log_p_x_given_z = log_p_x_given_z * tokens / batch_size
+        log_p_x_given_z_per_token = log_p_x_given_z_per_token.detach()
 
         if self.model_type == "mim":
             # tokens = tgt_mask.sum()
@@ -1147,9 +1153,11 @@ class MTMIMModel(MTEncDecModel):
                 scale=torch.exp(0.5 * z_logv),
             )
             # should sum over sentences
-            # log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).mean(-1).mean()
-            log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
-            # log_q_z_given_x = q_z_given_x.log_prob(z).sum() / tokens
+            if self.recon_per_token:
+                # FIXME: test if can be removed
+                log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).mean(-1).mean()
+            else:
+                log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
 
             # build prior distribution
             p_z = torch.distributions.Normal(
@@ -1157,21 +1165,24 @@ class MTMIMModel(MTEncDecModel):
                 scale=torch.ones_like(z),
             )
             # should sum over sentences
-            # log_p_z = p_z.log_prob(z).sum(-1).mean(-1).mean()
-            log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
-            # log_p_z = p_z.log_prob(z).sum() / tokens
+            if self.recon_per_token:
+                # FIXME: test if can be removed
+                log_p_z = p_z.log_prob(z).sum(-1).mean(-1).mean()
+            else:
+                log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
 
             batch_counter = getattr(self, "batch_counter", 0)
             if train:
                 self.batch_counter = batch_counter+1
             c = batch_counter / self.non_recon_warmup_batches
-            loss_terms =  0.5 * (log_q_z_given_x + log_p_z)
+            loss_terms = 0.5 * (log_q_z_given_x + log_p_z)
             # show loss value for reconstruction but train MIM
             loss = -(
-                (log_p_x_given_z - log_p_x_given_z.detach() +log_p_x_given_z_per_token )  + c * (loss_terms - loss_terms.detach())
+                (log_p_x_given_z - log_p_x_given_z.detach() + log_p_x_given_z_per_token) +
+                c * (loss_terms - loss_terms.detach())
             )
         elif self.model_type == "ae":
-            loss = - (log_p_x_given_z - log_p_x_given_z.detach() +log_p_x_given_z_per_token )
+            loss = -(log_p_x_given_z - log_p_x_given_z.detach() + log_p_x_given_z_per_token)
 
         # add attention orthogonality loss
         loss = loss + self.ortho_loss_coef * ortho_loss
