@@ -1,0 +1,212 @@
+#!/bin/bash
+#SBATCH -A ent_aiapps_asr
+#SBATCH -p batch_32GB           # batch, batch_16GB, Backfill... Check draco onboarding guide.
+#SBATCH -N 8                    # number of nodes
+#SBATCH -t 8:00:00              # wall time
+#SBATCH --exclusive             # exclusive node access
+#SBATCH --gres=gpu:8            # Specify the number of GPUs even if exclusive
+#SBATCH --mem=0                 # all mem avail
+#SBATCH --mail-type=FAIL        # only send email on failure
+#SBATCH --ntasks-per-node=8     # n tasks per machine
+#SBATCH --overcommit            # Needed for pytorch
+set -x
+
+
+INIT_MODEL=''
+PROJECT_NAME=librispeech_rnnt_s
+
+TRAIN_BATCH_SIZE=32
+EVAL_BATCH_SIZE=32
+
+D_MODEL=144
+EPOCHS=1000
+N_LAYERS=16
+CONV_SIZE=31
+SAMPLING_FACTOR=4
+N_HEADS=4
+TIME_MASKS=10
+TIME_WIDTH=0.05
+VOCAB_SIZE=1024
+ENCODING=bpe # char or bpe
+TOKENIZER_TYPE=bpe #bpe or wpe
+OPT=adamw
+LR=5
+WD=1e-3
+DATASET=ls
+
+EXP_NAME=dr_${DATASET}_d${D_MODEL}_${OPT}lr${LR}_wd${WD}_aug${TIME_MASKS}x${TIME_WIDTH}_stdc${D_MODEL}_sp${VOCAB_SIZE}_${N_LAYERS}layer_${SAMPLING_FACTOR}x_${EPOCHS}e_rnnt
+
+TOKENIZER=/tokenizers/librispeech/experimental/tokenizer_spe_unigram_v${VOCAB_SIZE}_max0/
+
+SLURM_ACCOUNT='ent/aiapps'
+USERID='vnoroozi'
+LUSTRE_ACCOUNT_PREFIX=/fs/sjc1-lcl01/${SLURM_ACCOUNT}
+INIT_EXP_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/results/
+
+# Container to be used by job. TIP: create "complete" containers, do not do pip/apt install as part of job
+CONTAINER="gitlab-master.nvidia.com/vnoroozi/nemo_containers:nemo-latest18"
+
+# Where you code is
+CODE_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/code/NeMo_mine_latest
+
+TRAIN_ISTARRED=true
+#TRAIN_MANIFEST='/data/librispeech_withsp2/manifests/librispeech_train_withSP.json'
+TRAIN_MANIFEST='/data/Librispeech_SP_Tarred/tarred_audio_manifest.json'
+TRAIN_FILEPATHS='/data/Librispeech_SP_Tarred/audio__OP_0..511_CL_.tar'
+
+VAL_ISTARRED=false
+VAL_MANIFEST='[/manifests/librispeech/librivox-dev-other.json,/manifests/librispeech/librivox-dev-clean.json,/manifests/librispeech/librivox-test-other.json,/manifests/librispeech/librivox-test-clean.json]'
+#VAL_MANIFEST='/data/asr_set_1.4/eval/tarred_eval_all.json'
+VAL_FILEPATHS='/data/LibriSpeech/eval__OP_0..1023_CL_.tar'
+
+TEST_ISTARRED=false
+TEST_MANIFEST='[/manifests/librispeech/librivox-dev-other.json,/manifests/librispeech/librivox-dev-clean.json,/manifests/librispeech/librivox-test-other.json,/manifests/librispeech/librivox-test-clean.json]'
+#TEST_MANIFEST='/data/asr_set_1.4/eval/tarred_eval_all.json'
+TEST_FILEPATHS='/data/LibriSpeech/eval__OP_0..1023_CL_.tar'
+
+# Where training/validation data is, various manifests and configs
+DATA_DIR=${LUSTRE_ACCOUNT_PREFIX}/datasets/
+
+#TOKENIZERS_DIR=${LUSTRE_ACCOUNT_PREFIX}/users/${USERID}/tokenizers
+TOKENIZERS_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/tokenizers
+
+#MANIFESTS_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/manifests
+MANIFESTS_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/manifests
+
+# Where to store results and logs
+RESULTS_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/results/$PROJECT_NAME/$EXP_NAME
+
+mkdir -p $RESULTS_DIR
+OUTFILE=${RESULTS_DIR}/slurm-%j-%n.out
+ERRFILE=${RESULTS_DIR}/error-%j-%n.out
+
+# actually mount folders to container
+MOUNTS="--container-mounts=${CODE_DIR}:/code,${RESULTS_DIR}:/results,${DATA_DIR}:/data,${TOKENIZERS_DIR}:/tokenizers,${MANIFESTS_DIR}:/manifests,${INIT_EXP_DIR}:/exp_init"
+
+CONFIG_PATH=./experimental/conformer/
+CONFIG_NAME=conformer_rnnt_$ENCODING.yaml
+
+if [ $ENCODING == 'char' ]
+then
+  SCRIPT_POSTFIX=''
+else
+  SCRIPT_POSTFIX='_bpe'
+fi
+
+if [ -z "$INIT_MODEL" ]
+then
+  INIT_CHECKPOINT=''
+else
+  INIT_CHECKPOINT=/exp_init/$INIT_MODEL
+fi
+
+
+# Your actual script. Note that paths are inside container.
+# Change CUDA_VISIBLE_DEVICES based on your cluster node config
+read -r -d '' cmd <<EOF
+echo "*******STARTING********" \
+&& echo "---------------" \
+&& nvidia-smi \
+&& wandb login 111111111111111111111111111111111 \
+&& cd /code/ \
+&& git rev-parse HEAD \
+&& export PYTHONPATH="/code/.:${PYTHONPATH}" \
+&& python -c 'import pytorch_lightning as ptl; print(ptl.__version__)' \
+&& export TOKENIZERS_PARALLELISM=false \
+&& CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python ./examples/asr/speech_to_text_rnnt$SCRIPT_POSTFIX.py  \
+--config-path=$CONFIG_PATH \
+--config-name=$CONFIG_NAME \
+exp_manager.create_wandb_logger=true \
+exp_manager.wandb_logger_kwargs.project=$PROJECT_NAME \
+exp_manager.wandb_logger_kwargs.name=$EXP_NAME \
+exp_manager.name=$EXP_NAME \
+exp_manager.resume_if_exists=true \
+exp_manager.resume_ignore_no_checkpoint=true \
++exp_manager.use_datetime_version=false \
+trainer.log_every_n_steps=100 \
+trainer.progress_bar_refresh_rate=100 \
+trainer.precision=32 \
+trainer.amp_level=O0 \
+model.train_ds.pin_memory=true \
+model.test_ds.pin_memory=true \
+model.validation_ds.pin_memory=true \
+model.train_ds.use_start_end_token=true \
+model.validation_ds.use_start_end_token=true \
+model.test_ds.use_start_end_token=true \
+model.preprocessor.window_size=0.025 \
+model.preprocessor.pad_to=0 \
+model.train_ds.num_workers=8 \
+model.validation_ds.num_workers=8 \
+model.test_ds.num_workers=8 \
+exp_manager.exp_dir=/results/ \
+trainer.check_val_every_n_epoch=1.0 \
+trainer.gpus=-1 \
+trainer.num_nodes=$SLURM_JOB_NUM_NODES \
+model.tokenizer.type=$TOKENIZER_TYPE \
+model.tokenizer.dir=$TOKENIZER \
++model.train_ds.shuffle_n=2048 \
+model.train_ds.trim_silence=false \
++model.train_ds.is_tarred=$TRAIN_ISTARRED \
++model.train_ds.tarred_audio_filepaths=$TRAIN_FILEPATHS \
+model.train_ds.manifest_filepath=$TRAIN_MANIFEST \
++model.validation_ds.is_tarred=$VAL_ISTARRED \
++model.validation_ds.tarred_audio_filepaths=$VAL_FILEPATHS \
+model.validation_ds.manifest_filepath=$VAL_MANIFEST \
++model.test_ds.is_tarred=$TEST_ISTARRED \
++model.test_ds.tarred_audio_filepaths=$TEST_FILEPATHS \
+model.test_ds.manifest_filepath=$TEST_MANIFEST \
+trainer.max_epochs=1000 \
+model.train_ds.batch_size=32 \
+model.validation_ds.batch_size=16 \
+model.test_ds.batch_size=16 \
+trainer.accumulate_grad_batches=1 \
+model.spec_augment.freq_masks=2 \
+model.spec_augment.freq_width=27 \
+model.spec_augment.time_masks=10 \
+model.spec_augment.time_width=0.05 \
+model.encoder.d_model=144 \
+model.encoder.xscaling=true \
+model.encoder.untie_biases=true \
+model.encoder.n_layers=16 \
+model.encoder.n_heads=4 \
+model.encoder.conv_kernel_size=31 \
+model.encoder.self_attention_model=rel_pos \
+model.encoder.subsampling=striding \
+model.encoder.subsampling_conv_channels=144 \
+model.encoder.subsampling_factor=4 \
+model.encoder.dropout_emb=0.0 \
+model.encoder.dropout_att=0.1 \
+model.optim.name=adam \
+model.optim.lr=5.0 \
+model.optim.betas=[0.9,0.98] \
+model.optim.weight_decay=1e-6 \
+model.optim.sched.warmup_steps=10000 \
+model.optim.sched.name=NoamAnnealing \
+model.optim.sched.d_model=144 \
+model.optim.sched.min_lr=1e-6 \
+trainer.gradient_clip_val=0 \
+model.compute_eval_loss=false \
+model.decoding.strategy=greedy_batch \
+model.decoding.greedy.max_symbols=5 \
+model.decoder.random_state_sampling=false \
+model.decoder.prednet.pred_rnn_layers=1 \
+model.decoder.prednet.t_max=null \
+model.decoder.prednet.dropout=0.1 \
+model.model_defaults.pred_hidden=320 \
+model.model_defaults.joint_hidden=320 \
+model.decoder.prednet.pred_hidden=320 \
+model.joint.jointnet.joint_hidden=320 \
+model.joint.experimental_fuse_loss_wer=true \
+model.joint.fused_batch_size=8 \
+model.joint.jointnet.activation=relu \
+model.joint.jointnet.dropout=0.1 \
++model.variational_noise.start_step=20000 \
++model.variational_noise.std=0.075
+EOF
+
+
+srun -J $EXP_NAME -o $OUTFILE -e $ERRFILE \
+  --container-image="$CONTAINER" \
+  $MOUNTS \
+  bash -c "${cmd}"
+set +
