@@ -1137,6 +1137,7 @@ class MTMIMModel(MTEncDecModel):
         output_mask = (labels != self.decoder_tokenizer.pad_id).type_as(log_probs)
         batch_size = output_mask.shape[0]
         tokens = output_mask.sum()
+        import pudb; pudb.set_trace()
         log_p_x_given_z_per_token = log_p_x_given_z.detach()
         log_p_x_given_z = log_p_x_given_z * tokens / batch_size
 
