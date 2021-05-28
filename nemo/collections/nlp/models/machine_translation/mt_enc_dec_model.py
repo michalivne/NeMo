@@ -1137,15 +1137,20 @@ class MTMIMModel(MTEncDecModel):
                 log_p_x_given_z_token = -self.eval_loss_fn(log_probs=log_probs, labels=labels)
 
             log_p_x_given_z = log_p_x_given_z_per_token
+            log_p_x_given_z_per_token = log_p_x_given_z_per_token.detach()
         else:
-            import pudb; pudb.set_trace()
-            # correct averaging of log_p_x_given_z per token to be per sample
+            # averaging of log_p_x_given_z per sample
             output_mask = (labels != self.decoder_tokenizer.pad_id).type_as(log_probs)
-            batch_size = output_mask.shape[0]
-            tokens = output_mask.sum()
-            log_p_x_given_z = log_p_x_given_z_per_token * tokens / batch_size
 
-        log_p_x_given_z_per_token = log_p_x_given_z_per_token.detach()
+            log_p_x_given_z_per_token = -self.loss_fn(
+                log_probs=log_probs,
+                labels=labels,
+            ).view(log_probs.shape[:2]) * output_mask
+
+            log_p_x_given_z = log_p_x_given_z_per_token.sum(-1).mean()
+
+            tokens = output_mask.sum()
+            log_p_x_given_z_per_token = log_p_x_given_z_per_token.sum().detach() / tokens
 
         if self.model_type == "mim":
             # tokens = tgt_mask.sum()
