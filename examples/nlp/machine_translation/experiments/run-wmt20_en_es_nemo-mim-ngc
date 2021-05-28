@@ -14,7 +14,8 @@ DEC_TOKENIZER=yttm
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
-EXP_NAME="en_es_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_ls${LABEL_SMOOTHING}"
+# EXP_NAME="en_es_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_ls${LABEL_SMOOTHING}"
+EXP_NAME="en_es_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}"
 EXP_NAME_NGC="${EXP_NAME} ml-model.aayn-tmim"
 
 
@@ -92,7 +93,7 @@ nvidia-smi \
       model.train_ds.tgt_file_name=/raid/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
       model.train_ds.tokens_in_batch=16000 \
       model.train_ds.use_tarred_dataset=true \
-      +model.train_ds.metadata_path=/raid/sharded_tarfiles_60_even/metadata.json \
+      model.train_ds.metadata_file=/raid/sharded_tarfiles_60_even/metadata.json \
       model.validation_ds.src_file_name=/raid/newstest2012-es-en.clean.tok.src \
       model.validation_ds.tgt_file_name=/raid/newstest2012-es-en.clean.tok.ref \
       model.test_ds.src_file_name=/raid/newstest2013-es-en.clean.tok.src \
