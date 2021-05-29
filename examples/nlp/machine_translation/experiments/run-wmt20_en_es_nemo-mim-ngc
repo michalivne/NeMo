@@ -15,7 +15,7 @@ NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
 PROJECT=wmt20_es_en_tmim
 # EXP_NAME="en_es_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_ls${LABEL_SMOOTHING}"
-EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}"
+EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}"
 EXP_NAME_NGC="wmt20_es_en_${EXP_NAME} ml-model.aayn-tmim"
 
 
