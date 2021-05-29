@@ -2,11 +2,13 @@
 
 # command
 
-WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
-PROJECT=tMIM
-EXP_NAME=t-mim-no-ls-recon-true
+MODEL_TYPE=mim
+RECON_PER_TOKEN=true
 
-python enc_dec_nmt-mim.py \
+PROJECT=tmim
+EXP_NAME=${PROJECT}_recon-${RECON_PER_TOKEN}
+
+python -- enc_dec_nmt-mim.py \
       --config-path=conf \
       --config-name=mim_base \
       exp_manager.name=${EXP_NAME} \
@@ -29,12 +31,12 @@ python enc_dec_nmt-mim.py \
       model.label_smoothing=0.0 \
       model.src_language=es \
       model.tgt_language=en \
-      model.model_type=mim \
+      model.model_type=${MODEL_TYPE} \
       model.latent_size=1024 \
       model.ortho_loss_coef=0.0 \
-      model.att_bridge_k=30 \
+      model.att_bridge_k=32 \
       model.att_bridge_size=2048 \
-      model.recon_per_token=true \
+      model.recon_per_token=${RECON_PER_TOKEN} \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \

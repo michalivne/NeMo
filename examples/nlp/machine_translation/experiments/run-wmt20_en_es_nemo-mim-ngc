@@ -15,8 +15,8 @@ NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
 PROJECT=wmt20_es_en_tmim
 # EXP_NAME="en_es_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_ls${LABEL_SMOOTHING}"
-EXP_NAME="es_en_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}"
-EXP_NAME_NGC="${EXP_NAME} ml-model.aayn-tmim"
+EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}"
+EXP_NAME_NGC="wmt20_es_en_${EXP_NAME} ml-model.aayn-tmim"
 
 
 WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
@@ -43,7 +43,7 @@ nvidia-smi \
 && cp -R /data/parallel/sharded_tarfiles_60_even/ /raid/ \
 && cp -R /data/parallel/newstest2012-es-en.clean.tok.* /raid/ \
 && cp -R /data/parallel/newstest2013-es-en.clean.tok.* /raid/ \
-&& python enc_dec_nmt-mim.py \
+&& python -- enc_dec_nmt-mim.py \
       --config-path=conf \
       --config-name=mim_base \
       exp_manager.name=${EXP_NAME} \
