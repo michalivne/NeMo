@@ -63,4 +63,4 @@ python -- enc_dec_nmt-mim.py \
       model.test_ds.tgt_file_name=data/wmt20_en_es_nemo/newstest2013-es-en.clean.tok.ref \
       model.train_ds.use_tarred_dataset=true \
       do_training=true \
-      model.preproc_out_dir=data/preproc-wmt20_en_es_nemo \
+      model.preproc_out_dir=data/preproc-wmt20_en_es_nemo
