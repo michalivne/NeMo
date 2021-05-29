@@ -1044,19 +1044,26 @@ class MTMIMModel(MTEncDecModel):
         #     active=True,
         # )
 
-        if self.model_type not in ["mim", "ae"]:
+        if self.model_type not in ["mim", "ae", "seq2seq"]:
             raise ValueError("Unknown model_type = {model_type}".format(
                 model_type=self.model_type,
             ))
 
-        self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
-        self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
+        if self.model_type in ["mim", "ae"]:
+            self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
+            if self.latent_size != self.encoder.hidden_size:
+                self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
+            else:
+                self.latent2hidden =  torch.nn.Identity()
 
-        self.att_bridge = AttentionBridge(
-            hidden_size=self.encoder.hidden_size,
-            k=self.att_bridge_k,
-            bridge_size=self.att_bridge_size,
-        )
+            self.att_bridge = AttentionBridge(
+                hidden_size=self.encoder.hidden_size,
+                k=self.att_bridge_k,
+                bridge_size=self.att_bridge_size,
+            )
+        else:
+            # seq2seq
+            self.latent2hidden =  torch.nn.Identity()
 
     @classmethod
     def list_available_models(cls) -> Optional[Dict[str, str]]:
@@ -1074,35 +1081,46 @@ class MTMIMModel(MTEncDecModel):
         """
         Sample latent code z with reparameterization from hiddens
         """
-        # project hidden to a fixed size bridge
-        res = self.att_bridge(
-            hidden=hidden,
-            hidden_mask=hidden_mask,
-            return_ortho_loss=return_ortho_loss,
-        )
+        if self.model_type == "seq2seq":
+            # seq2seq
+            z = z_mean = hidden
+            z_logv = torch.ones_like(hidden)
+            z_mask = hidden_mask
+            ortho_loss = 0.0
+        else:
+            # MIM and AE
+            # project hidden to a fixed size bridge
+            res = self.att_bridge(
+                hidden=hidden,
+                hidden_mask=hidden_mask,
+                return_ortho_loss=return_ortho_loss,
+            )
+
+            if return_ortho_loss:
+                bridge_hidden, ortho_loss = res
+            else:
+                bridge_hidden = res
+
+            # parameters of posterior q(z|x)
+            z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(bridge_hidden), 2, dim=-1)
+
+            if self.model_type == "mim":
+                # avoid numerical instability
+                z_logv = z_logv.clamp_min(self.min_logv)
+                # sample z with reparameterization
+                e = torch.randn_like(z_mean)
+                z = e * torch.exp(0.5 * z_logv) + z_mean
+            if self.model_type == "ae":
+                z_logv = torch.ones_like(z_logv)
+                z = z_mean
+
+            z_mask = torch.ones(z.shape[0:2]).to(hidden_mask)
+
 
         if return_ortho_loss:
-            bridge_hidden, ortho_loss = res
+            return z, z_mean, z_logv, z_mask, ortho_loss
         else:
-            bridge_hidden = res
-
-        # parameters of posterior q(z|x)
-        z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(bridge_hidden), 2, dim=-1)
-
-        if self.model_type == "mim":
-            # avoid numerical instability
-            z_logv = z_logv.clamp_min(self.min_logv)
-            # sample z with reparameterization
-            e = torch.randn_like(z_mean)
-            z = e * torch.exp(0.5 * z_logv) + z_mean
-        if self.model_type == "ae":
-            z_logv = torch.ones_like(z_logv)
-            z = z_mean
-
-        if return_ortho_loss:
-            return z, z_mean, z_logv, ortho_loss
-        else:
-            return z, z_mean, z_logv
+            return z, z_mean, z_logv, z_mask
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask, labels, train=True):
@@ -1112,7 +1130,7 @@ class MTMIMModel(MTEncDecModel):
         )
 
         # build posterior distribution q(x|z)
-        z, z_mean, z_logv, ortho_loss = self.sample_z(
+        z, z_mean, z_logv, bridge_mask, ortho_loss = self.sample_z(
             hidden=src_hiddens,
             hidden_mask=src_mask,
             return_ortho_loss=True,
@@ -1120,7 +1138,7 @@ class MTMIMModel(MTEncDecModel):
 
         # build decoding distribution
         bridge_hiddens_dec = self.latent2hidden(z)
-        bridge_mask = torch.ones(z.shape[0:2]).to(src_mask)
+
         tgt_hiddens = self.decoder(
             input_ids=tgt,
             decoder_mask=tgt_mask,
@@ -1152,6 +1170,11 @@ class MTMIMModel(MTEncDecModel):
             tokens = output_mask.sum()
             log_p_x_given_z_per_token = log_p_x_given_z_per_token.sum().detach() / tokens
 
+        batch_counter = getattr(self, "batch_counter", 0)
+        if train:
+            self.batch_counter = batch_counter+1
+        warmup_counter = min(batch_counter / self.non_recon_warmup_batches, 1)
+
         if self.model_type == "mim":
             # tokens = tgt_mask.sum()
             q_z_given_x = torch.distributions.Normal(
@@ -1177,21 +1200,17 @@ class MTMIMModel(MTEncDecModel):
             else:
                 log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
 
-            batch_counter = getattr(self, "batch_counter", 0)
-            if train:
-                self.batch_counter = batch_counter+1
-            c = batch_counter / self.non_recon_warmup_batches
             loss_terms = 0.5 * (log_q_z_given_x + log_p_z)
             # show loss value for reconstruction but train MIM
             loss = -(
                 (log_p_x_given_z - log_p_x_given_z.detach() + log_p_x_given_z_per_token) +
-                c * (loss_terms - loss_terms.detach())
+                warmup_counter * (loss_terms - loss_terms.detach())
             )
-        elif self.model_type == "ae":
+        elif self.model_type in ["ae", "seq2seq"]:
             loss = -(log_p_x_given_z - log_p_x_given_z.detach() + log_p_x_given_z_per_token)
 
         # add attention orthogonality loss
-        loss = loss + self.ortho_loss_coef * ortho_loss
+        loss = loss + warmup_counter * self.ortho_loss_coef * ortho_loss
 
         return loss, log_p_x_given_z
 
@@ -1213,13 +1232,12 @@ class MTMIMModel(MTEncDecModel):
             self.eval()
             src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
 
-            z, _, _ = self.sample_z(
+            z, _, _, bridge_mask = self.sample_z(
                 hidden=src_hiddens,
                 hidden_mask=src_mask,
                 return_ortho_loss=False,
             )
             bridge_hiddens_dec = self.latent2hidden(z)
-            bridge_mask = torch.ones(z.shape[0:2]).to(src_mask)
 
             # with self.cond_emb.push_latent(z=z):
             beam_results = self.beam_search(encoder_hidden_states=bridge_hiddens_dec, encoder_input_mask=bridge_mask)

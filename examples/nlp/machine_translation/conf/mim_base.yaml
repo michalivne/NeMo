@@ -17,7 +17,7 @@ model:
   ortho_loss_coef: 1.0
   att_bridge_k: 20
   att_bridge_size: 1024
-  non_recon_warmup_batches: 500000
+  non_recon_warmup_batches: 200000
   recon_per_token: true
 
   train_ds:
