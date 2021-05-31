@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -A ent_aiapps_nlp
-#SBATCH -p batch_32GB           # batch, batch_16GB, Backfill... Check draco onboarding guide.
+#SBATCH -p batch_24HR_dgx2_singlenode           # batch, batch_16GB, Backfill... Check draco onboarding guide.
 #SBATCH -N 1                    # number of nodes
 #SBATCH -t 8:00:00              # wall time
 #SBATCH --exclusive             # exclusive node access
-#SBATCH --gres=gpu:8            # Specify the number of GPUs even if exclusive
+#SBATCH --gres=gpu:16            # Specify the number of GPUs even if exclusive
 #SBATCH --mem=0                 # all mem avail
 #SBATCH --mail-type=FAIL        # only send email on failure
 #SBATCH --ntasks-per-node=1     # n tasks per machine
@@ -61,7 +61,7 @@ echo "*******STARTING********" \
 && git rev-parse HEAD \
 && export PYTHONPATH="/code/.:${PYTHONPATH}" \
 && python -c 'import pytorch_lightning as ptl; print(ptl.__version__)' \
-&& CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -- enc_dec_nmt.py \
+&& python -- enc_dec_nmt.py \
       --config-path=conf \
       --config-name=aayn_base \
       exp_manager.name=${EXP_NAME} \
