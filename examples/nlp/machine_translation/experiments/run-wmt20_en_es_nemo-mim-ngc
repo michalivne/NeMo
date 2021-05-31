@@ -4,19 +4,20 @@ script_name=`basename $0`
 echo "${script_name} <EXP_TAG> <ATT_BRIDGE_K> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <GPU_NUM>"
 
 EXP_TAG=${1:-2021_06_01}
-ATT_BRIDGE_K=${2:-32}
-MODEL_TYPE=${3:-mim}
-RECON=${4:-true}
-LABEL_SMOOTHING=${5:-0.0}
-GPU_NUM=${6:-8}
+PROJECT_TAG=${2:-2021_06_01}
+ATT_BRIDGE_K=${3:-32}
+MODEL_TYPE=${4:-mim}
+RECON=${5:-true}
+LABEL_SMOOTHING=${6:-0.0}
+GPU_NUM=${7:-8}
 
 ATT_BRIDGE_SIZE=2048
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
-PROJECT=wmt20_es_en_tmim-${EXP_TAG}
+PROJECT=wmt20_es_en_tmim${PROJECT_TAG}
 # EXP_NAME="en_es_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_ls${LABEL_SMOOTHING}"
-EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}"
+EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}${EXP_TAG}"
 EXP_NAME_NGC="${PROJECT}-${EXP_NAME} ml-model.aayn-tmim"
 
 
