@@ -2,7 +2,7 @@
 #SBATCH -A ent_aiapps_nlp
 #SBATCH -p batch_24HR_dgx2_singlenode           # batch, batch_16GB, Backfill... Check draco onboarding guide.
 #SBATCH -N 1                    # number of nodes
-#SBATCH -t 8:00:00              # wall time
+#SBATCH -t 24:00:00              # wall time
 #SBATCH --exclusive             # exclusive node access
 #SBATCH --gres=gpu:16            # Specify the number of GPUs even if exclusive
 #SBATCH --mem=0                 # all mem avail
