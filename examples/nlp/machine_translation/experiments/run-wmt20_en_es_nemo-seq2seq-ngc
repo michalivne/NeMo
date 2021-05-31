@@ -3,21 +3,19 @@
 script_name=`basename $0`
 echo "${script_name} <EXP_TAG> <ATT_BRIDGE_K> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <GPU_NUM>"
 
-EXP_TAG=${1:-2021_06_01}
-PROJECT_TAG=${2:-2021_06_01}
-ATT_BRIDGE_K=${3:-32}
-MODEL_TYPE=${4:-mim}
-RECON=${5:-true}
-LABEL_SMOOTHING=${6:-0.0}
-GPU_NUM=${7:-8}
+EXP_TAG=${1:-}
+PROJECT_TAG=${2:-}
+LABEL_SMOOTHING=${3:-0.1}
+GPU_NUM=${4:-8}
 
-ATT_BRIDGE_SIZE=2048
+MODEL_TYPE=${4:-seq2seq-default}
+
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
 PROJECT=wmt20_es_en_tmim${PROJECT_TAG}
 # EXP_NAME="en_es_wmt20-${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_ls${LABEL_SMOOTHING}"
-EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}${EXP_TAG}"
+EXP_NAME="${MODEL_TYPE}_ls${LABEL_SMOOTHING}${EXP_TAG}"
 EXP_NAME_NGC="${PROJECT}-${EXP_NAME} ml-model.aayn-tmim"
 
 
@@ -45,9 +43,9 @@ nvidia-smi \
 && cp -R /data/parallel/sharded_tarfiles_60_even/ /raid/ \
 && cp -R /data/parallel/newstest2012-es-en.clean.tok.* /raid/ \
 && cp -R /data/parallel/newstest2013-es-en.clean.tok.* /raid/ \
-&& python -- enc_dec_nmt-mim.py \
+&& python -- enc_dec_nmt.py \
       --config-path=conf \
-      --config-name=mim_base \
+      --config-name=aayn_base \
       exp_manager.name=${EXP_NAME} \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
@@ -68,12 +66,6 @@ nvidia-smi \
       model.label_smoothing=${LABEL_SMOOTHING} \
       model.src_language=es \
       model.tgt_language=en \
-      model.model_type=${MODEL_TYPE} \
-      model.latent_size=1024 \
-      model.ortho_loss_coef=0.0 \
-      model.att_bridge_k=${ATT_BRIDGE_K} \
-      model.att_bridge_size=${ATT_BRIDGE_SIZE} \
-      model.recon_per_token=${RECON} \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \
