@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Usage:
 # ./auto_launcher.sh -n 5 <file.sub>
