@@ -3,7 +3,7 @@
 script_name=`basename $0`
 echo "${script_name} <PROJECT_TAG> <EXP_TAG> <ATT_BRIDGE_K> <ATT_BRIDGE_SIZE> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <GPU_NUM>"
 
-PROJECT_TAG=${1:-}
+PROJECT_TAG=${1:--06-01-debug}
 EXP_TAG=${2:-}
 ATT_BRIDGE_K=${3:-32}
 ATT_BRIDGE_SIZE=${4:-2048}
@@ -15,9 +15,9 @@ GPU_NUM=${8:-8}
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
-PROJECT=wmt20_es_en_tmim${PROJECT_TAG}
+PROJECT_NAME=wmt20_es_en_tmim${PROJECT_TAG}
 EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}x${ATT_BRIDGE_SIZE}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}${EXP_TAG}"
-EXP_NAME_NGC="${PROJECT}-${EXP_NAME} ml-model.aayn-tmim"
+EXP_NAME_NGC="${PROJECT_NAME}-${EXP_NAME} ml-model.aayn-tmim"
 
 
 WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
@@ -52,10 +52,10 @@ nvidia-smi \
       exp_manager.name=${EXP_NAME} \
       +trainer.max_steps=${STEPS} \
       +trainer.val_check_interval=1000 \
-      +exp_manager.exp_dir=/results/${PROJECT} \
+      +exp_manager.exp_dir=/results/${PROJECT_NAME} \
       +exp_manager.create_wandb_logger=True \
       +exp_manager.wandb_logger_kwargs.name=${EXP_NAME} \
-      +exp_manager.wandb_logger_kwargs.project=${PROJECT} \
+      +exp_manager.wandb_logger_kwargs.project=${PROJECT_NAME} \
       +exp_manager.resume_if_exists=True \
       +exp_manager.resume_ignore_no_checkpoint=True \
       +exp_manager.create_checkpoint_callback=True \
