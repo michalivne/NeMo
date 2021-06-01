@@ -1212,7 +1212,7 @@ class MTMIMModel(MTEncDecModel):
         # add attention orthogonality loss
         loss = loss + warmup_counter * self.ortho_loss_coef * ortho_loss
 
-        return loss, log_p_x_given_z
+        return loss, log_p_x_given_z_per_token
 
     @torch.no_grad()
     def batch_translate(

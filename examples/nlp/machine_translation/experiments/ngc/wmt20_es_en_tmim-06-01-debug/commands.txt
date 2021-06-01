@@ -1,10 +1,9 @@
 # <PROJECT_TAG> <EXP_TAG> <LABEL_SMOOTHING> <GPU_NUM>
-run-wmt20_en_es_nemo-seq2seq-ngc -06-01-debug -default 0.1
+./run-wmt20_en_es_nemo-seq2seq-ngc -06-01-debug -default 0.1
 
 # run-wmt20_en_es_nemo-mim-ngc <PROJECT_TAG> <EXP_TAG> <ATT_BRIDGE_K> <ATT_BRIDGE_SIZE> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <GPU_NUM>
-run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 32 2048 seq2seq true 0.1
-run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 32 2048 mim true 0.0
-run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 32 2048 mim false 0.0
-run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 64 2048 mim true 0.0
-run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 64 2048 mim false 0.0
-run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 32 2048 seq2seq false 0.1
+./run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 32 2048 seq2seq true 0.1
+./run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 32 2048 mim true 0.0
+./run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 64 2048 mim true 0.0
+./run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 32 2048 mim false 0.0
+./run-wmt20_en_es_nemo-mim-ngc -06-01-debug "" 64 2048 mim false 0.0
