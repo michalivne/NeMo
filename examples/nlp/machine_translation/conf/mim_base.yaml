@@ -5,7 +5,7 @@ model:
   beam_size: 4
   len_pen: 0.0
   max_generation_delta: 30
-  label_smoothing: 0.0
+  label_smoothing: 0.1
   shared_tokenizer: True # train tokenizer model across src and tgt train data
   preproc_out_dir: null # path to store data preprocessing outputs
   src_language: 'en'
