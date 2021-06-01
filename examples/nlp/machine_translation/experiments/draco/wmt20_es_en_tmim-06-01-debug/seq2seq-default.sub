@@ -15,20 +15,16 @@ set -x
 EXP_TAG="-default"
 PROJECT_TAG="-06-01-debug"
 
-ATT_BRIDGE_K=32
 MODEL_TYPE=seq2seq
-RECON=true
 LABEL_SMOOTHING=0.1
 
-ATT_BRIDGE_SIZE=2048
-
 PROJECT_NAME=wmt20_es_en_tmim${PROJECT_TAG}
-EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}${EXP_TAG}"
+EXP_NAME="${MODEL_TYPE}_ls${LABEL_SMOOTHING}${EXP_TAG}"
 
 
 WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
 
-STEPS=600000
+STEPS=300000
 VOCAB_SIZE=32000
 
 
@@ -65,9 +61,9 @@ echo "*******STARTING********" \
 && python -- enc_dec_nmt.py \
       --config-path=conf \
       --config-name=aayn_base \
-      exp_manager.name=${EXP_NAME} \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
+      exp_manager.name=${EXP_NAME} \
       +trainer.max_steps=${STEPS} \
       +trainer.val_check_interval=1000 \
       +exp_manager.exp_dir=/results/ \
@@ -79,9 +75,11 @@ echo "*******STARTING********" \
       +exp_manager.create_checkpoint_callback=True \
       +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \
       +exp_manager.checkpoint_callback_params.mode=max \
-      +exp_manager.checkpoint_callback_params.save_top_k=1 \
+      +exp_manager.checkpoint_callback_params.save_top_k=3 \
+      +exp_manager.checkpoint_callback_params.always_save_nemo=true \
+      +exp_manager.checkpoint_callback_params.save_best_model=true \
       model.beam_size=4 \
-      model.max_generation_delta=30 \
+      model.max_generation_delta=5 \
       model.label_smoothing=${LABEL_SMOOTHING} \
       model.src_language=es \
       model.tgt_language=en \
@@ -98,14 +96,15 @@ echo "*******STARTING********" \
       model.decoder.ffn_dropout=0.1 \
       model.decoder.num_layers=6 \
       model.optim.lr=0.0004 \
+      model.encoder_tokenizer.library=yttm \
+      model.decoder_tokenizer.library=yttm \
       model.encoder_tokenizer.tokenizer_model=/data/sharded_tarfiles_60_even/tokenizer.32000.BPE.model \
       model.decoder_tokenizer.tokenizer_model=/data/sharded_tarfiles_60_even/tokenizer.32000.BPE.model \
-      model.encoder_tokenizer.bpe_dropout=0.1 \
-      model.decoder_tokenizer.bpe_dropout=0.1 \
-      model.train_ds.tar_files=/data/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
-      model.train_ds.metadata_file=/data/sharded_tarfiles_60_even/metadata.json \
       model.train_ds.tokens_in_batch=16000 \
       model.train_ds.use_tarred_dataset=true \
+      +model.train_ds.reverse_lang_direction=true \
+      model.train_ds.tar_files=/data/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
+      model.train_ds.metadata_file=/data/sharded_tarfiles_60_even/metadata.json \
       model.validation_ds.src_file_name=/data/newstest2012-es-en.clean.tok.src \
       model.validation_ds.tgt_file_name=/data/newstest2012-es-en.clean.tok.ref \
       model.test_ds.src_file_name=/data/newstest2013-es-en.clean.tok.src \
