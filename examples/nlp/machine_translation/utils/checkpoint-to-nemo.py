@@ -8,7 +8,7 @@ import os
 from nemo.collections.nlp.models.machine_translation.mt_enc_dec_model import MTMIMModel, MTEncDecModel
 
 print("{script} <seq2seq or mim> <.ckpt input file> <.nemo output file>".format(
-    script=os.path.basename(argv[0])))
+    script=os.path.basename(sys.argv[0])))
 
 model_type = sys.argv[1]
 checkpoint_fname = sys.argv[2]
