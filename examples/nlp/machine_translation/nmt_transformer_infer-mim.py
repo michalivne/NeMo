@@ -42,6 +42,7 @@ def main():
     parser.add_argument("--max_delta_length", type=int, default=30, help="")
     parser.add_argument("--target_lang", type=str, default=None, help="")
     parser.add_argument("--source_lang", type=str, default=None, help="")
+    parser.add_argument("--fixed_len_penaly", type=float, default=-1, help="")
 
     args = parser.parse_args()
     torch.set_grad_enabled(False)
@@ -59,6 +60,8 @@ def main():
     model.beam_search.beam_size = args.beam_size
     model.beam_search.len_pen = args.len_pen
     model.beam_search.max_delta_length = args.max_delta_length
+    if args.fixed_len_penaly > 0:
+        model.beam_search.fixed_len_penaly = args.fixed_len_penaly
 
     if torch.cuda.is_available():
         model = model.cuda()

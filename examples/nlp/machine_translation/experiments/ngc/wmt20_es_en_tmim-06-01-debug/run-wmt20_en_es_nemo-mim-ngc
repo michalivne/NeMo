@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 script_name=`basename $0`
-echo "${script_name} <PROJECT_TAG> <EXP_TAG> <ATT_BRIDGE_K> <ATT_BRIDGE_SIZE> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <GPU_NUM>"
+echo "${script_name} <PROJECT_TAG> <EXP_TAG> <ATT_BRIDGE_K> <ATT_BRIDGE_SIZE> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <LEN_PENALTY> <GPU_NUM>"
 
 PROJECT_TAG=${1:--06-01-debug}
 EXP_TAG=${2:-}
@@ -10,7 +10,8 @@ ATT_BRIDGE_SIZE=${4:-2048}
 MODEL_TYPE=${5:-mim}
 RECON=${6:-true}
 LABEL_SMOOTHING=${7:-0.0}
-GPU_NUM=${8:-8}
+LEN_PENALTY==${8:-0.0}
+GPU_NUM=${9:-8}
 
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
@@ -66,6 +67,7 @@ nvidia-smi \
       +exp_manager.checkpoint_callback_params.save_best_model=true \
       model.beam_size=4 \
       model.max_generation_delta=5 \
+      model.len_pen=0.0 \
       model.label_smoothing=${LABEL_SMOOTHING} \
       model.src_language=es \
       model.tgt_language=en \
