@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-#SBATCH -A ent_aiapps_nlp
-#SBATCH -p batch_24HR_dgx2_singlenode           # batch, batch_16GB, Backfill... Check draco onboarding guide.
-#SBATCH -N 1                    # number of nodes
-#SBATCH -t 24:00:00              # wall time
+#SBATCH --account=ent_aiapps_nlp
+#SBATCH --partition=batch_32GB    # batch, batch_16GB, Backfill... Check draco onboarding guide.
+#SBATCH --nodes=1               # number of nodes
+#SBATCH -t 08:00:00             # wall time
 #SBATCH --exclusive             # exclusive node access
-#SBATCH --gres=gpu:16            # Specify the number of GPUs even if exclusive
+#SBATCH --gres=gpu:16           # Specify the number of GPUs even if exclusive
 #SBATCH --mem=0                 # all mem avail
 #SBATCH --mail-type=FAIL        # only send email on failure
 #SBATCH --ntasks-per-node=1     # n tasks per machine
-#SBATCH --overcommit            # Needed for pytorch
+#SBATCH --cpus-per-task=10      # n cpus per task
 set -x
 
 
+# Experiment config
 EXP_TAG="-default"
 PROJECT_TAG="-06-01-debug"
 
@@ -25,12 +26,12 @@ ATT_BRIDGE_SIZE=2048
 PROJECT_NAME=wmt20_es_en_tmim${PROJECT_TAG}
 EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}${EXP_TAG}"
 
-
-WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
-
 STEPS=600000
 VOCAB_SIZE=32000
 
+WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
+
+# draco config
 
 # Container to be used by job. TIP: create "complete" containers, do not do pip/apt install as part of job
 CONTAINER="gitlab-master.nvidia.com/mlivne/nemo_containers:nemo-1.0.0rc1"

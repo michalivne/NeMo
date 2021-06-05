@@ -16,6 +16,7 @@ EXP_TAG="-default"
 PROJECT_TAG="-06-01-debug"
 
 MODEL_TYPE=seq2seq
+LEN_PENALTY=0.6
 LABEL_SMOOTHING=0.1
 
 PROJECT_NAME=wmt20_es_en_tmim${PROJECT_TAG}
@@ -47,20 +48,18 @@ ERRFILE=${RESULTS_DIR}/error-%j-%n.out
 # actually mount folders to container
 MOUNTS="${CODE_DIR}:/code,${RESULTS_DIR}:/results,${DATA_DIR}:/data"
 
-CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15"
-
 # Your actual script. Note that paths are inside container.
-# Change CUDA_VISIBLE_DEVICES based on your cluster node config
 read -r -d '' cmd <<EOF
 echo "*******STARTING********" \
 && echo "---------------" \
 && nvidia-smi \
+&& pip install wandb==0.10.31 \
 && wandb login ${WANDBLOGIN} \
 && cd /code/examples/nlp/machine_translation \
 && git rev-parse HEAD \
 && export PYTHONPATH="/code/.:${PYTHONPATH}" \
 && python -c 'import pytorch_lightning as ptl; print(ptl.__version__)' \
-&& CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} python -- enc_dec_nmt.py \
+&& python -- enc_dec_nmt.py \
       --config-path=conf \
       --config-name=aayn_base \
       'trainer.gpus=-1' \
@@ -82,6 +81,7 @@ echo "*******STARTING********" \
       +exp_manager.checkpoint_callback_params.save_best_model=true \
       model.beam_size=4 \
       model.max_generation_delta=5 \
+      model.len_pen=${LEN_PENALTY} \
       model.label_smoothing=${LABEL_SMOOTHING} \
       model.src_language=es \
       model.tgt_language=en \

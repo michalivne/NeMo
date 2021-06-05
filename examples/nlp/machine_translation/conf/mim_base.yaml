@@ -3,7 +3,7 @@ do_training: True # set to False if only preprocessing data
 
 model:
   beam_size: 4
-  len_pen: 0.0
+  len_pen: 0.6
   max_generation_delta: 30
   label_smoothing: 0.0
   shared_tokenizer: True # train tokenizer model across src and tgt train data
@@ -19,6 +19,7 @@ model:
   att_bridge_size: 1024
   non_recon_warmup_batches: 200000
   recon_per_token: true
+  data_aug: ''
 
   train_ds:
     src_file_name: null
