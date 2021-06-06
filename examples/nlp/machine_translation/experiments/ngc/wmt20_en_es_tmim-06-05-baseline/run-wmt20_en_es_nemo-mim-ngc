@@ -101,7 +101,7 @@ nvidia-smi \
       model.train_ds.metadata_file=/raid/sharded_tarfiles_60_even/metadata.json \
       model.train_ds.src_file_name=/raid/train.clean.en-es.60.tok.en.shuffled \
       model.train_ds.tgt_file_name=/raid/train.clean.en-es.60.tok.es.shuffled \
-      model.preproc_out_dir=/data/parallel/sharded_tarfiles_60_even/
+      model.preproc_out_dir=/data/parallel/sharded_tarfiles_60_even/ \
       model.validation_ds.src_file_name=/raid/newstest2012-es-en.clean.tok.ref \
       model.validation_ds.tgt_file_name=/raid/newstest2012-es-en.clean.tok.src \
       model.test_ds.src_file_name=/raid/newstest2013-es-en.clean.tok.ref \
