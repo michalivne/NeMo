@@ -16,7 +16,7 @@ GPU_NUM=${9:-8}
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
-PROJECT_NAME=wmt20_es_en_tmim${PROJECT_TAG}
+PROJECT_NAME=wmt20_en_es_tmim${PROJECT_TAG}
 EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}x${ATT_BRIDGE_SIZE}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}${EXP_TAG}_lp${LEN_PENALTY}"
 EXP_NAME_NGC="${PROJECT_NAME}-${EXP_NAME} ml-model.aayn-tmim"
 

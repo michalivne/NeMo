@@ -3,7 +3,7 @@
 script_name=`basename $0`
 echo "${script_name} <PROJECT_TAG> <EXP_TAG> <ATT_BRIDGE_K> <ATT_BRIDGE_SIZE> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <LEN_PENALTY> <GPU_NUM>"
 
-PROJECT_TAG=${1:--06-01-debug}
+PROJECT_TAG=${1:--06-06-baseline}
 EXP_TAG=${2:-}
 ATT_BRIDGE_K=${3:-32}
 ATT_BRIDGE_SIZE=${4:-2048}
@@ -23,7 +23,7 @@ EXP_NAME_NGC="${PROJECT_NAME}-${EXP_NAME} ml-model.aayn-tmim"
 
 WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
 
-STEPS=600000
+STEPS=300000
 VOCAB_SIZE=32000
 DATA_ID=73242
 
@@ -101,7 +101,7 @@ nvidia-smi \
       model.train_ds.metadata_file=/raid/sharded_tarfiles_60_even/metadata.json \
       model.train_ds.src_file_name=data/wmt20_en_es_nemo/train.clean.en-es.60.tok.es.shuffled \
       model.train_ds.tgt_file_name=data/wmt20_en_es_nemo/train.clean.en-es.60.tok.en.shuffled \
-      model.preproc_out_dir=data/preproc-wmt20_en_es_nemo \
+      model.preproc_out_dir=/data/parallel/sharded_tarfiles_60_even/ \
       model.validation_ds.src_file_name=/raid/newstest2012-es-en.clean.tok.src \
       model.validation_ds.tgt_file_name=/raid/newstest2012-es-en.clean.tok.ref \
       model.test_ds.src_file_name=/raid/newstest2013-es-en.clean.tok.src \
