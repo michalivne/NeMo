@@ -10,7 +10,7 @@ ATT_BRIDGE_SIZE=${4:-2048}
 MODEL_TYPE=${5:-mim}
 RECON=${6:-true}
 LABEL_SMOOTHING=${7:-0.0}
-LEN_PENALTY==${8:-0.0}
+LEN_PENALTY=${8:-0.0}
 GPU_NUM=${9:-8}
 
 INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
