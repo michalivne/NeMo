@@ -37,11 +37,11 @@ nvidia-smi \
 && pip install --upgrade wandb \
 && pip install Cython \
 && wandb login ${WANDBLOGIN} \
-&& pip install -U omegaconf==2.0.6 \
 && git clone https://github.com/michalivne/NeMo.git \
 && cd NeMo/ \
 && git checkout nmt-translationMIM \
 && ./reinstall.sh \
+&& pip install -U omegaconf==2.0.6 \
 && cd examples/nlp/machine_translation \
 && cp -R /data/parallel/sharded_tarfiles_60_even/ /raid/ \
 && cp -R /data/parallel/newstest2012-es-en.clean.tok.* /raid/ \
