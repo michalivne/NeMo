@@ -1049,7 +1049,7 @@ def perm_tokens(tokens, alpha=0.9, mask=None):
     return perm_tokens
 
 
-def mask_tokens(tokens, alpha=0.9, mask=None):
+def mask_tokens(tokens, p=0.1, mask=None):
     """
     tokens - [B x N] batch B of N tokens
     alpha - upper bound on distance of tokens that can permute
@@ -1217,6 +1217,7 @@ class MTMIMModel(MTEncDecModel):
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask, labels, train=True):
+        import pudb; pudb.set_trace()
         src_hiddens = self.encoder(
             input_ids=src,
             encoder_mask=src_mask,
