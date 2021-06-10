@@ -1012,60 +1012,107 @@ class AttentionBridge(torch.nn.Module):
             return M
 
 
-def perm_tokens(tokens, alpha=3, mask=None):
+class DataAugmentation(object):
     """
-    tokens - [B x N] batch B of N tokens
-    alpha - upper bound on distance of tokens that can permute
-    mask - if given, permutation is limited to items where mask > 0
-           NOTE: assumes that mask is continuous and starts from index 0!!!!
-
-    Locally permutes nearby tokens with distance k.
-    k < 1 is no permutation
-    1 <= k < 2 will permute nearby tokens.
-    2 <= k < 3 will permute tokens of distance 2.
-    ...
+    Performs data augmentation to tokens.
     """
-    B, N = tokens.shape[0:2]
-    alpha = float(alpha)
+    def __init__(self, data_aug_spec):
+        """
+        data_aug_spec - a string specifying which augmentations to perform.
+                        example: "mask_tokens(p=0.1):perm_tokens(alpha=3)"
+        """
+        self.data_aug_spec = data_aug_spec
 
-    # permute only items with mask > 0
-    if mask is not None:
-        mask = (mask > 0)
-        neg_mask = ~mask
+        # build data_aug methods: method_name(**kwargs)
+        self.data_aug_kwargs = []
+        for d_aug in self.data_aug.split(":"):
+            cur_kwargs = {}
+            if d_aug.startswith("mask_tokens("):
+                da_name = "mask_tokens"
+                for kw in d_aug[len("mask_tokens("):-1].split(","):
+                    if kw.startswith("p="):
+                        cur_kwargs["p"] = float(kw[2:])
+                    else:
+                        raise ValueError(f"Unknown argument {kw} in data augmentation {d_aug}")
+            elif d_aug.startswith("perm_tokens("):
+                da_name = "perm_tokens"
+                for kw in d_aug[len("perm_tokens("):-1].split(","):
+                    if kw.startswith("alpha="):
+                        cur_kwargs["alpha"] = float(kw[6:])
+                    else:
+                        raise ValueError(f"Unknown argument {kw} in data augmentation {d_aug}")
+            else:
+                raise ValueError(f"Unknown data augmentation '{d_aug}'")
 
-    # exclude unmasked items from
-    if mask is not None:
-        q = torch.arange(N).repeat(B, 1).type(torch.float32)
-        q[neg_mask] = q[neg_mask] + N + int(alpha + 2)
-        q[mask] = q[mask] + torch.rand((B, N))[mask]*alpha
-    else:
-        q = torch.arange(N).repeat(B, 1) + torch.rand((B, N))*alpha
+            self.data_aug_kwargs.append((da_name, cur_kwargs))
+            logging.info(f"Added data augmentation {d_aug}")
 
-    perm_ind = q.sort(dim=1)[1]
-    perm_tokens = tokens.gather(-1, perm_ind)
+    def forward(self, tokens, mask):
+        """
+        Applies data_aug_spec to masked tokens.
+        """
+        import pudb; pudb.set_trace()
+        for da_name, cur_kwargs in self.data_aug_kwargs:
+            da_func = getattr(self, da_name)
+            tokens = da_func(tokens=tokens, mask=mask, **cur_kwargs)
 
-    return perm_tokens
+        return tokens
 
 
-def mask_tokens(tokens, p=0.1, mask=None, mask_token=1):
-    """
-    tokens - [B x N] batch B of N tokens
-    p - probability of replacing current token with mask_token
-    mask - if given, permutation is limited to items where mask > 0
-    mask_token - token to be used when masking
-    """
-    # drop only tokens that are permitted according to mask
-    if mask is not None:
-        mask = (mask > 0)
-    else:
-        mask = (torch.ones_like(tokens) > 0)
+    def perm_tokens(self, tokens, alpha=3, mask=None):
+        """
+        tokens - [B x N] batch B of N tokens
+        alpha - upper bound on distance of tokens that can permute
+        mask - if given, permutation is limited to items where mask > 0
+               NOTE: assumes that mask is continuous and starts from index 0!!!!
 
-    drop_tokens = torch.rand(tokens.size(), device=tokens.device) < p
-    drop_mask = torch.logical_and(drop_tokens, mask)
-    masked_tokens = tokens.clone()
-    masked_tokens[drop_mask] = mask_token
+        Locally permutes nearby tokens with distance k.
+        k < 1 is no permutation
+        1 <= k < 2 will permute nearby tokens.
+        2 <= k < 3 will permute tokens of distance 2.
+        ...
+        """
+        B, N = tokens.shape[0:2]
+        alpha = float(alpha)
 
-    return masked_tokens
+        # permute only items with mask > 0
+        if mask is not None:
+            mask = (mask > 0)
+            neg_mask = ~mask
+
+        # exclude unmasked items from
+        if mask is not None:
+            q = torch.arange(N).repeat(B, 1).type(torch.float32)
+            q[neg_mask] = q[neg_mask] + N + int(alpha + 2)
+            q[mask] = q[mask] + torch.rand((B, N))[mask]*alpha
+        else:
+            q = torch.arange(N).repeat(B, 1) + torch.rand((B, N))*alpha
+
+        perm_ind = q.sort(dim=1)[1]
+        perm_tokens = tokens.gather(-1, perm_ind)
+
+        return perm_tokens
+
+
+    def mask_tokens(self, tokens, p=0.1, mask=None, mask_token=1):
+        """
+        tokens - [B x N] batch B of N tokens
+        p - probability of replacing current token with mask_token
+        mask - if given, permutation is limited to items where mask > 0
+        mask_token - token to be used when masking
+        """
+        # drop only tokens that are permitted according to mask
+        if mask is not None:
+            mask = (mask > 0)
+        else:
+            mask = (torch.ones_like(tokens) > 0)
+
+        drop_tokens = torch.rand(tokens.size(), device=tokens.device) < p
+        drop_mask = torch.logical_and(drop_tokens, mask)
+        masked_tokens = tokens.clone()
+        masked_tokens[drop_mask] = mask_token
+
+        return masked_tokens
 
 
 class MTMIMModel(MTEncDecModel):
@@ -1075,7 +1122,6 @@ class MTMIMModel(MTEncDecModel):
 
     def __init__(self, cfg: MTMIMModelConfig, trainer: Trainer = None):
         super().__init__(cfg=cfg, trainer=trainer)
-        # TODO: use model_type
         self.model_type: str = cfg.get("model_type", "mim")
         self.latent_size: int = cfg.get("latent_size", 512)
         # self.proj_type: str = cfg.get("proj_type", "z-proj")
@@ -1085,9 +1131,10 @@ class MTMIMModel(MTEncDecModel):
         self.att_bridge_size: int = cfg.get("att_bridge_size", 1024)
         self.non_recon_warmup_batches: int = cfg.get("non_recon_warmup_batches", 500000)
         self.recon_per_token: bool = cfg.get("recon_per_token", True)
-        self.data_aug: str = cfg.get("data_aug", "")
+        self.data_aug_spec: str = cfg.get("data_aug_spec", "")
 
-        # build data_aug methods: method_name(tokens, )
+        # construct data augmentator
+        self.data_aug = DataAugmentation(data_aug_spec=self.data_aug_spec)
 
         if not self.recon_per_token:
             loss_fn = NLLLoss(
@@ -1199,7 +1246,9 @@ class MTMIMModel(MTEncDecModel):
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask, labels, train=True):
-        import pudb; pudb.set_trace()
+        if train:
+            src = self.data_aug(tokens=src, mask=src_mask)
+
         src_hiddens = self.encoder(
             input_ids=src,
             encoder_mask=src_mask,
