@@ -1311,7 +1311,8 @@ class MTMIMModel(MTEncDecModel):
             # should sum over sentences
             if self.recon_per_token:
                 # FIXME: test if can be removed
-                log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).mean(-1).mean()
+                # log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).mean(-1).mean()
+                log_q_z_given_x = q_z_given_x.log_prob(z).mean(-1).mean(-1).mean()
             else:
                 log_q_z_given_x = q_z_given_x.log_prob(z).sum(-1).sum(-1).mean()
 
@@ -1323,7 +1324,8 @@ class MTMIMModel(MTEncDecModel):
             # should sum over sentences
             if self.recon_per_token:
                 # FIXME: test if can be removed
-                log_p_z = p_z.log_prob(z).sum(-1).mean(-1).mean()
+                # log_p_z = p_z.log_prob(z).sum(-1).mean(-1).mean()
+                log_p_z = p_z.log_prob(z).mean(-1).mean(-1).mean()
             else:
                 log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
 
