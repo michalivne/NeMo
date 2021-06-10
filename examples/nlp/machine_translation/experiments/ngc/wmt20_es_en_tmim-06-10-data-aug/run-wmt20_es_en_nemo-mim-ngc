@@ -81,7 +81,7 @@ nvidia-smi \
       model.att_bridge_k=${ATT_BRIDGE_K} \
       model.att_bridge_size=${ATT_BRIDGE_SIZE} \
       model.recon_per_token=${RECON} \
-      model.data_aug_spec=${DATA_AUG_SPEC}
+      model.data_aug_spec=${DATA_AUG_SPEC} \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \
