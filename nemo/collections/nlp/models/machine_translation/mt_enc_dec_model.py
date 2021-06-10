@@ -1047,6 +1047,9 @@ class DataAugmentation(object):
             self.data_aug_kwargs.append((da_name, cur_kwargs))
             logging.info(f"Added data augmentation {d_aug}")
 
+    def __call__(self, *args, **kwargs):
+        self.forward(*args, **kwargs)
+
     def forward(self, tokens, mask):
         """
         Applies data_aug_spec to masked tokens.
