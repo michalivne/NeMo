@@ -3,9 +3,9 @@
 script_name=`basename $0`
 echo "${script_name} <PROJECT_TAG> <EXP_TAG> <ATT_BRIDGE_K> <ATT_BRIDGE_SIZE> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <LEN_PENALTY> <GPU_NUM>"
 
-PROJECT_TAG=${1:--06-06-baseline}
+PROJECT_TAG=${1:-}
 EXP_TAG=${2:-}
-ATT_BRIDGE_K=${3:-32}
+ATT_BRIDGE_K=${3:-64}
 ATT_BRIDGE_SIZE=${4:-2048}
 MODEL_TYPE=${5:-mim}
 RECON=${6:-true}
@@ -26,6 +26,9 @@ WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
 STEPS=300000
 VOCAB_SIZE=32000
 DATA_ID=73242
+
+
+DATA_AUG_SPEC='mask_tokens(p=0.1):perm_tokens(alpha=3)'
 
 # command
 
@@ -78,6 +81,7 @@ nvidia-smi \
       model.att_bridge_k=${ATT_BRIDGE_K} \
       model.att_bridge_size=${ATT_BRIDGE_SIZE} \
       model.recon_per_token=${RECON} \
+      model.data_aug_spec=${DATA_AUG_SPEC}
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \

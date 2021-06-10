@@ -19,7 +19,7 @@ model:
   att_bridge_size: 1024
   non_recon_warmup_batches: 200000
   recon_per_token: true
-  data_aug_spec: 'mask_tokens(p=0.1):perm_tokens(alpha=3)'
+  data_aug_spec: ''
 
   train_ds:
     src_file_name: null
