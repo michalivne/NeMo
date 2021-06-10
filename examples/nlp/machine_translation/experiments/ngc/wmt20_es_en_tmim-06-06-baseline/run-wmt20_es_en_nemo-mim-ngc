@@ -17,7 +17,7 @@ INSTANCE=dgx1v.32g.${GPU_NUM}.norm.beta
 NGC_CONTAINER='nvcr.io/nvidia/pytorch:21.03-py3'
 
 PROJECT_NAME=wmt20_es_en_tmim${PROJECT_TAG}
-EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}x${ATT_BRIDGE_SIZE}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}${EXP_TAG}_lp${LEN_PENALTY}"
+EXP_NAME="${MODEL_TYPE}_k${ATT_BRIDGE_K}x${ATT_BRIDGE_SIZE}_recon-${RECON}_brsz${ATT_BRIDGE_SIZE}_ls${LABEL_SMOOTHING}_lp${LEN_PENALTY}${EXP_TAG}"
 EXP_NAME_NGC="${PROJECT_NAME}-${EXP_NAME} ml-model.aayn-tmim"
 
 
@@ -99,8 +99,8 @@ nvidia-smi \
       +model.train_ds.reverse_lang_direction=true \
       model.train_ds.tar_files=/raid/sharded_tarfiles_60_even/batches.tokens.16000._OP_1..302_CL_.tar \
       model.train_ds.metadata_file=/raid/sharded_tarfiles_60_even/metadata.json \
-      model.train_ds.src_file_name=data/wmt20_en_es_nemo/train.clean.en-es.60.tok.es.shuffled \
-      model.train_ds.tgt_file_name=data/wmt20_en_es_nemo/train.clean.en-es.60.tok.en.shuffled \
+      model.train_ds.src_file_name=/data/parallel/wmt20_en_es_nemo/train.clean.en-es.60.tok.es.shuffled \
+      model.train_ds.tgt_file_name=/data/parallel/wmt20_en_es_nemo/train.clean.en-es.60.tok.en.shuffled \
       model.preproc_out_dir=/data/parallel/sharded_tarfiles_60_even/ \
       model.validation_ds.src_file_name=/raid/newstest2012-es-en.clean.tok.src \
       model.validation_ds.tgt_file_name=/raid/newstest2012-es-en.clean.tok.ref \
