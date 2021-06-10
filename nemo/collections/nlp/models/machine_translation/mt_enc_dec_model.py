@@ -1091,7 +1091,7 @@ class DataAugmentation(object):
         else:
             q = torch.arange(N).repeat(B, 1) + torch.rand((B, N))*alpha
 
-        perm_ind = q.sort(dim=1)[1].to(device=perm_tokens.device)
+        perm_ind = q.sort(dim=1)[1].to(device=tokens.device)
         perm_tokens = tokens.gather(-1, perm_ind)
 
         return perm_tokens
