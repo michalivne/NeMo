@@ -49,6 +49,7 @@ from nemo.collections.common.parts import form_attention_mask
 
 __all__ = ['MTEncDecModel', 'MTMIMModel']
 
+
 class MTEncDecModel(EncDecNLPModel):
     """
     Encoder-decoder machine translation model.
@@ -1010,6 +1011,7 @@ class AttentionBridge(torch.nn.Module):
         else:
             return M
 
+
 def perm_tokens(tokens, alpha=0.9, mask=None):
     """
     tokens - [B x N] batch B of N tokens
@@ -1033,7 +1035,6 @@ def perm_tokens(tokens, alpha=0.9, mask=None):
 
         # perm_tokens[neg_mask] = tokens[neg_mask]
 
-
     # exclude unmasked items from
     if mask is not None:
         q = torch.arange(N).repeat(B, 1).type(torch.float32)
@@ -1046,6 +1047,7 @@ def perm_tokens(tokens, alpha=0.9, mask=None):
     perm_tokens = tokens.gather(-1, perm_ind)
 
     return perm_tokens
+
 
 def mask_tokens(tokens, alpha=0.9, mask=None):
     """
@@ -1070,7 +1072,6 @@ def mask_tokens(tokens, alpha=0.9, mask=None):
 
         # perm_tokens[neg_mask] = tokens[neg_mask]
 
-
     # exclude unmasked items from
     if mask is not None:
         q = torch.arange(N).repeat(B, 1).type(torch.float32)
@@ -1083,6 +1084,7 @@ def mask_tokens(tokens, alpha=0.9, mask=None):
     perm_tokens = tokens.gather(-1, perm_ind)
 
     return perm_tokens
+
 
 class MTMIMModel(MTEncDecModel):
     """
@@ -1125,20 +1127,31 @@ class MTMIMModel(MTEncDecModel):
             ))
 
         if self.model_type in ["mim", "ae"]:
-            self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
             if self.latent_size != self.encoder.hidden_size:
                 self.latent2hidden = torch.nn.Linear(self.latent_size, self.encoder.hidden_size)
             else:
-                self.latent2hidden =  torch.nn.Identity()
+                self.latent2hidden = torch.nn.Identity()
 
+            # self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
+            # self.att_bridge = AttentionBridge(
+            #     hidden_size=self.encoder.hidden_size,
+            #     k=self.att_bridge_k,
+            #     bridge_size=self.att_bridge_size,
+            # )
+            if (self.model_type == "ae"):
+                bridge_hidden_size = self.latent_size
+            elif (self.model_type == "mim"):
+                bridge_hidden_size = self.latent_size*2
+
+            # TODO: bridge_size=bridge_hidden_size*2?
             self.att_bridge = AttentionBridge(
-                hidden_size=self.encoder.hidden_size,
+                hidden_size=bridge_hidden_size,
                 k=self.att_bridge_k,
-                bridge_size=self.att_bridge_size,
+                bridge_size=bridge_hidden_size*2,
             )
         else:
             # seq2seq
-            self.latent2hidden =  torch.nn.Identity()
+            self.latent2hidden = torch.nn.Identity()
 
     @classmethod
     def list_available_models(cls) -> Optional[Dict[str, str]]:
@@ -1159,7 +1172,7 @@ class MTMIMModel(MTEncDecModel):
         if self.model_type == "seq2seq":
             # seq2seq
             z = z_mean = hidden
-            z_logv = torch.ones_like(hidden)
+            z_logv = torch.zeros_like(hidden)
             z_mask = hidden_mask
             ortho_loss = 0.0
         else:
@@ -1177,20 +1190,20 @@ class MTMIMModel(MTEncDecModel):
                 bridge_hidden = res
 
             # parameters of posterior q(z|x)
-            z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(bridge_hidden), 2, dim=-1)
-
+            # z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(bridge_hidden), 2, dim=-1)
             if self.model_type == "mim":
+                z_mean, z_logv = torch.chunk(bridge_hidden, 2, dim=-1)
                 # avoid numerical instability
                 z_logv = z_logv.clamp_min(self.min_logv)
                 # sample z with reparameterization
                 e = torch.randn_like(z_mean)
                 z = e * torch.exp(0.5 * z_logv) + z_mean
             if self.model_type == "ae":
-                z_logv = torch.ones_like(z_logv)
+                z_mean = bridge_hidden
+                z_logv = torch.zeros_like(z_mean)
                 z = z_mean
 
             z_mask = torch.ones(z.shape[0:2]).to(hidden_mask)
-
 
         if return_ortho_loss:
             return z, z_mean, z_logv, z_mask, ortho_loss
