@@ -1140,12 +1140,18 @@ class MTMIMModel(MTEncDecModel):
 
             if (self.model_type == "ae"):
                 if (self.encoder.hidden_size != self.latent_size):
-                    self.hidden2latent_mean = torch.nn.Linear(self.encoder.hidden_size, self.latent_size)
+                    self.hidden2latent_mean = torch.nn.Sequential(
+                            torch.nn.ReLU(),
+                            torch.nn.Linear(self.encoder.hidden_size, self.latent_size)
+                        )
                 else:
                     self.hidden2latent_mean = torch.nn.Identity()
             elif (self.model_type == "mim"):
                 if (self.encoder.hidden_size != self.latent_size * 2):
-                    self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
+                    self.hidden2latent_mean_logv = torch.nn.Sequential(
+                            torch.nn.ReLU(),
+                            torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2),
+                        )
                 else:
                     self.hidden2latent_mean_logv = torch.nn.Identity()
         else:
