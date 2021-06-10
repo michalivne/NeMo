@@ -28,7 +28,7 @@ VOCAB_SIZE=32000
 DATA_ID=73242
 
 
-DATA_AUG_SPEC='mask_tokens(p=0.1):perm_tokens(alpha=3)'
+DATA_AUG_SPEC="'mask_tokens(p=0.1):perm_tokens(alpha=3)'"
 
 # command
 
