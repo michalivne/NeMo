@@ -27,6 +27,8 @@ STEPS=300000
 VOCAB_SIZE=32000
 DATA_ID=73242
 
+# && pip install -U omegaconf==2.0.6 \
+
 # command
 
 read -d '' cmd <<EOF
@@ -36,7 +38,6 @@ nvidia-smi \
 && apt-get install -y libsndfile1 ffmpeg \
 && pip install --upgrade wandb \
 && pip install Cython \
-&& pip install -U omegaconf==2.0.6 \
 && wandb login ${WANDBLOGIN} \
 && git clone https://github.com/michalivne/NeMo.git \
 && cd NeMo/ \
