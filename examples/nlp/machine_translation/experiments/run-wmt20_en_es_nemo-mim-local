@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 
+script_name=`basename $0`
+echo "${script_name} <MODEL_TYPE>"
+
 # command
 
-MODEL_TYPE=mim
+MODEL_TYPE=${1:-mim}
 RECON_PER_TOKEN=true
 
 PROJECT=tmim
