@@ -1132,23 +1132,22 @@ class MTMIMModel(MTEncDecModel):
             else:
                 self.latent2hidden = torch.nn.Identity()
 
-            # self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
-            # self.att_bridge = AttentionBridge(
-            #     hidden_size=self.encoder.hidden_size,
-            #     k=self.att_bridge_k,
-            #     bridge_size=self.att_bridge_size,
-            # )
-            if (self.model_type == "ae"):
-                bridge_hidden_size = self.latent_size
-            elif (self.model_type == "mim"):
-                bridge_hidden_size = self.latent_size*2
-
-            # TODO: bridge_size=bridge_hidden_size*2?
             self.att_bridge = AttentionBridge(
-                hidden_size=bridge_hidden_size,
+                hidden_size=self.encoder.hidden_size,
                 k=self.att_bridge_k,
-                bridge_size=bridge_hidden_size*2,
+                bridge_size=self.att_bridge_size,
             )
+
+            if (self.model_type == "ae"):
+                if (self.encoder.hidden_size != self.latent_size):
+                    self.hidden2latent_mean = torch.nn.Linear(self.encoder.hidden_size, self.latent_size)
+                else:
+                    self.hidden2latent_mean = torch.nn.Identity()
+            elif (self.model_type == "mim"):
+                if (self.encoder.hidden_size != self.latent_size * 2):
+                    self.hidden2latent_mean_logv = torch.nn.Linear(self.encoder.hidden_size, self.latent_size * 2)
+                else:
+                    self.hidden2latent_mean_logv = torch.nn.Identity()
         else:
             # seq2seq
             self.latent2hidden = torch.nn.Identity()
@@ -1192,14 +1191,14 @@ class MTMIMModel(MTEncDecModel):
             # parameters of posterior q(z|x)
             # z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(bridge_hidden), 2, dim=-1)
             if self.model_type == "mim":
-                z_mean, z_logv = torch.chunk(bridge_hidden, 2, dim=-1)
+                z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(bridge_hidden), 2, dim=-1)
                 # avoid numerical instability
                 z_logv = z_logv.clamp_min(self.min_logv)
                 # sample z with reparameterization
                 e = torch.randn_like(z_mean)
                 z = e * torch.exp(0.5 * z_logv) + z_mean
             if self.model_type == "ae":
-                z_mean = bridge_hidden
+                z_mean = self.hidden2latent_mean(bridge_hidden)
                 z_logv = torch.zeros_like(z_mean)
                 z = z_mean
 
