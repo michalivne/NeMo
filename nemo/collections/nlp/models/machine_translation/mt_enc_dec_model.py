@@ -1012,7 +1012,7 @@ class AttentionBridge(torch.nn.Module):
             return M
 
 
-def perm_tokens(tokens, alpha=0.9, mask=None):
+def perm_tokens(tokens, alpha=3, mask=None):
     """
     tokens - [B x N] batch B of N tokens
     alpha - upper bound on distance of tokens that can permute
@@ -1033,8 +1033,6 @@ def perm_tokens(tokens, alpha=0.9, mask=None):
         mask = (mask > 0)
         neg_mask = ~mask
 
-        # perm_tokens[neg_mask] = tokens[neg_mask]
-
     # exclude unmasked items from
     if mask is not None:
         q = torch.arange(N).repeat(B, 1).type(torch.float32)
@@ -1049,41 +1047,25 @@ def perm_tokens(tokens, alpha=0.9, mask=None):
     return perm_tokens
 
 
-def mask_tokens(tokens, p=0.1, mask=None):
+def mask_tokens(tokens, p=0.1, mask=None, mask_token=1):
     """
     tokens - [B x N] batch B of N tokens
-    alpha - upper bound on distance of tokens that can permute
+    p - probability of replacing current token with mask_token
     mask - if given, permutation is limited to items where mask > 0
-           NOTE: assumes that mask is continuous and starts from index 0!!!!
-
-    Locally permutes nearby tokens with distance k.
-    k < 1 is no permutation
-    1 <= k < 2 will permute nearby tokens.
-    2 <= k < 3 will permute tokens of distance 2.
-    ...
+    mask_token - token to be used when masking
     """
-    B, N = tokens.shape[0:2]
-    alpha = float(alpha)
-
-    # permute only items with mask > 0
+    # drop only tokens that are permitted according to mask
     if mask is not None:
         mask = (mask > 0)
-        neg_mask = ~mask
-
-        # perm_tokens[neg_mask] = tokens[neg_mask]
-
-    # exclude unmasked items from
-    if mask is not None:
-        q = torch.arange(N).repeat(B, 1).type(torch.float32)
-        q[neg_mask] = q[neg_mask] + N + int(alpha + 2)
-        q[mask] = q[mask] + torch.rand((B, N))[mask]*alpha
     else:
-        q = torch.arange(N).repeat(B, 1) + torch.rand((B, N))*alpha
+        mask = (torch.ones_like(tokens) > 0)
 
-    perm_ind = q.sort(dim=1)[1]
-    perm_tokens = tokens.gather(-1, perm_ind)
+    drop_tokens = torch.rand(tokens.size(), device=tokens.device) < p
+    drop_mask = torch.logical_and(drop_tokens, mask)
+    masked_tokens = tokens.clone()
+    masked_tokens[drop_mask] = mask_token
 
-    return perm_tokens
+    return masked_tokens
 
 
 class MTMIMModel(MTEncDecModel):
