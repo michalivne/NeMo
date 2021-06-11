@@ -1060,7 +1060,7 @@ class DataAugmentation(object):
             logging.info(f"Added data augmentation {d_aug}")
 
     def __call__(self, *args, **kwargs):
-        self.forward(*args, **kwargs)
+        return self.forward(*args, **kwargs)
 
     def forward(self, tokens, mask):
         """
