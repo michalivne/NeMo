@@ -27,6 +27,9 @@ STEPS=300000
 VOCAB_SIZE=32000
 DATA_ID=73242
 
+# && pip install -U omegaconf==2.0.6 \
+# && pip install -U hydra==1.0.4 \
+
 # command
 
 read -d '' cmd <<EOF
@@ -41,8 +44,6 @@ nvidia-smi \
 && cd NeMo/ \
 && git checkout nmt-translationMIM \
 && ./reinstall.sh \
-&& pip install -U omegaconf==2.0.6 \
-&& pip install -U hydra==1.0.4 \
 && cd examples/nlp/machine_translation \
 && cp -R /data/parallel/sharded_tarfiles_60_even/ /raid/ \
 && cp -R /data/parallel/newstest2012-es-en.clean.tok.* /raid/ \
