@@ -1035,6 +1035,9 @@ class DataAugmentation(object):
         # build data augmentation methods: method_name(**kwargs)
         self.data_aug_kwargs = []
         for d_aug in self.data_aug_spec.split(":"):
+            if not d_aug:
+                continue
+
             cur_kwargs = {}
             if d_aug.startswith("mask_tokens("):
                 da_name = "mask_tokens"
