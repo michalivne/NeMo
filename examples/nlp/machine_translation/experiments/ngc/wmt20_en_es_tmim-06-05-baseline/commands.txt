@@ -5,7 +5,7 @@
 ./run-wmt20_en_es_nemo-mim-ngc -06-05-baseline "" 64 2048 mim true 0.0 0.0
 ./run-wmt20_en_es_nemo-mim-ngc -06-05-baseline "" 64 2048 ae true 0.1 0.0
 
-# no projection to mean/var if same dimension
+# no projection to mean/var if same dimension + ReLU
 ./run-wmt20_en_es_nemo-mim-ngc -06-05-baseline "-arch-v1" 64 2048 mim true 0.0 0.0
-# no projection to mean/var if same dimension + mean over z
+# no projection to mean/var if same dimension + mean over z + no ReLU
 ./run-wmt20_en_es_nemo-mim-ngc -06-05-baseline "-arch-v2" 64 2048 mim true 0.0 0.0
