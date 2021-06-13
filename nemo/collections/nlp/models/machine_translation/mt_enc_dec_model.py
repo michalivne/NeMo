@@ -1249,7 +1249,12 @@ class MTMIMModel(MTEncDecModel):
                 e = torch.randn_like(z_mean)
                 z = e * torch.exp(0.5 * z_logv) + z_mean
             if self.model_type == "ae":
-                z_mean = self.hidden2latent_mean(bridge_hidden)
+                # check for hidden2latent_mean_logv in case we test mim as ae
+                if hasattr(self, "hidden2latent_mean_logv"):
+                    z_mean, z_logv = torch.chunk(self.hidden2latent_mean_logv(bridge_hidden), 2, dim=-1)
+                else:
+                    z_mean = self.hidden2latent_mean(bridge_hidden)
+
                 z_logv = torch.zeros_like(z_mean)
                 z = z_mean
 

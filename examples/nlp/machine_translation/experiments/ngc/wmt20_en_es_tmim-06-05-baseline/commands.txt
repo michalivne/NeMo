@@ -1,11 +1,11 @@
 # <PROJECT_TAG> <EXP_TAG> <ATT_BRIDGE_K> <ATT_BRIDGE_SIZE> <MODEL_TYPE> <RECON> <LABEL_SMOOTHING> <LEN_PENALTY> <GPU_NUM>
 
-# git hash: 023a53657c491be2a2028b9ac8cf027bcc57a64f
+# git tag: arch-v0 (git hash: 023a53657c491be2a2028b9ac8cf027bcc57a64f)
 ./run-wmt20_en_es_nemo-mim-ngc -06-05-baseline "" 64 2048 seq2seq true 0.1 0.6
 ./run-wmt20_en_es_nemo-mim-ngc -06-05-baseline "" 64 2048 mim true 0.0 0.0
 ./run-wmt20_en_es_nemo-mim-ngc -06-05-baseline "" 64 2048 ae true 0.1 0.0
 
 # no projection to mean/var if same dimension + ReLU
 ./run-wmt20_en_es_nemo-mim-ngc -06-05-baseline "-arch-v1" 64 2048 mim true 0.0 0.0
-# no projection to mean/var if same dimension + mean over z + no ReLU
+# git tag: arch-v2 no projection to mean/var if same dimension + mean over z + no ReLU
 ./run-wmt20_en_es_nemo-mim-ngc -06-05-baseline "-arch-v2" 64 2048 mim true 0.0 0.0
