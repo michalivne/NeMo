@@ -33,7 +33,7 @@ from nemo.utils import logging
 def main():
     parser = ArgumentParser()
     parser.add_argument("--model", type=str, required=True, help="")
-    parser.add_argument("--model_type", type=str, required=True, help="")
+    parser.add_argument("--model_type", type=str, default="", help="")
     parser.add_argument("--srctext", type=str, required=True, help="")
     parser.add_argument("--tgtout", type=str, required=True, help="")
     parser.add_argument("--batch_size", type=int, default=256, help="")
