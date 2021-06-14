@@ -29,6 +29,9 @@ import torch
 import nemo.collections.nlp as nemo_nlp
 from nemo.utils import logging
 
+import time
+import datetime
+
 
 def main():
     parser = ArgumentParser()
@@ -42,6 +45,9 @@ def main():
     parser.add_argument("--target_lang", type=str, default=None, help="")
     parser.add_argument("--source_lang", type=str, default=None, help="")
     parser.add_argument("--fixed_len_penaly", type=float, default=-1, help="")
+    # If given, append line iwth current execution time to timeout file name
+    parser.add_argument("--timeout", type=str, default="", help="")
+
 
     args = parser.parse_args()
     torch.set_grad_enabled(False)
@@ -64,6 +70,8 @@ def main():
 
     logging.info(f"Translating: {args.srctext}")
 
+    t0 = time.time()
+
     count = 0
     with open(args.srctext, 'r') as src_f:
         for line in src_f:
@@ -82,6 +90,18 @@ def main():
             #    print(f"Translated {count} sentences")
         if len(src_text) > 0:
             tgt_text += model.translate(text=src_text, source_lang=args.source_lang, target_lang=args.target_lang)
+
+    t1 = time.time()
+
+    dt = (t0-t1)
+    logging.info("Translation time: {dt} []".format(
+        dt=dt,
+        fdt=str(datetime.timedelta(seconds=dt)),
+    ))
+
+    if args.timeout:
+        with open(args.timeout, "a") as fh:
+            fh.write(f"{dt}\n")
 
     with open(args.tgtout, 'w') as tgt_f:
         for line in tgt_text:
