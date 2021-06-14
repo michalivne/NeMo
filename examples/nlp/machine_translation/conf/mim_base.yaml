@@ -146,7 +146,7 @@ trainer:
   gpus: -1
   num_nodes: 1
   max_epochs: 200
-  amp_level: O2 # O1/O2 for mixed precision
+  amp_level: O1 # O1/O2 for mixed precision
   precision: 16 # Should be set to 16 for O1 and O2, default is 16 as PT ignores it when am_level is O0
   accelerator: ddp
   checkpoint_callback: False

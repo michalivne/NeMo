@@ -45,7 +45,7 @@ def main():
     parser.add_argument("--target_lang", type=str, default=None, help="")
     parser.add_argument("--source_lang", type=str, default=None, help="")
     parser.add_argument("--fixed_len_penaly", type=float, default=-1, help="")
-    # If given, append line iwth current execution time to timeout file name
+    # If given, append a line with current execution time to timeout file name
     parser.add_argument("--timeout", type=str, default="", help="")
 
 
@@ -93,7 +93,7 @@ def main():
 
     t1 = time.time()
 
-    dt = (t0-t1)
+    dt = (t1-t0)
     logging.info("Translation time: {dt} []".format(
         dt=dt,
         fdt=str(datetime.timedelta(seconds=dt)),
