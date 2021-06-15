@@ -55,11 +55,8 @@ def main():
     else:
         raise NotImplemented(f"Only support .nemo files, but got: {args.model}")
 
-    model.beam_search.beam_size = args.beam_size
     model.beam_search.len_pen = args.len_pen
     model.beam_search.max_delta_length = args.max_delta_length
-    if args.fixed_len_penaly > 0:
-        model.beam_search.fixed_len_penaly = args.fixed_len_penaly
 
     if torch.cuda.is_available():
         model = model.cuda()
@@ -70,6 +67,8 @@ def main():
     results_dict = dict()
 
     for beam_size in args.beam_size:
+        model.beam_search.beam_size = args.beam_size
+
         for batch_size in args.batch_size:
             for seq_len in args.seq_len:
                 name = f"beam={beam_size}_batch={batch_size}_seq_len={seq_len}"
