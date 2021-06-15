@@ -65,6 +65,7 @@ def main():
     input_seq_words = input_seq.split(' ') * 2
     N = len(input_seq_words)
     results_dict = dict()
+    results_per_sample_dict = dict()
 
     for beam_size in args.beam_size:
         model.beam_search.beam_size = beam_size
@@ -87,21 +88,24 @@ def main():
                     t0 = time.time()
                     res = model.translate(text=src_text, source_lang=args.source_lang, target_lang=args.target_lang)
                     t1 = time.time()
-                    cur_time.append(t1 - t0)
+                    cur_time.append((t1 - t0))
 
                 results_dict[name] = np.mean(cur_time)
-                print("{mean} +/- {std}".format(
+                results_per_sample_dict[name] = results_dict[name] / batch_size
+                print("{mean} +/- {std} [{per_sample}]".format(
                     mean=np.mean(cur_time),
                     std=np.std(cur_time),
+                    per_sample=results_per_sample_dict[name],
                 ))
 
     # print results
-    fresults = pprint.pformat(results_dict)
-    logging.info("\n"+fresults)
+    logging.info("\n"+pprint.pformat(results_dict))
 
     if args.results_out:
-        with open(args.results_out, "w") as fh:
-            fh.write(f"{fresults}\n")
+        with open(args.results_out+".per_batch", "w") as fh:
+            fh.write(pprint.pformat(results_dict))
+        with open(args.results_out+".per_sample", "w") as fh:
+            fh.write(pprint.pformat(results_per_sample_dict))
 
 
 if __name__ == '__main__':
