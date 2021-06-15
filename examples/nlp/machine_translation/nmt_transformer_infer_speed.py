@@ -13,18 +13,16 @@
 # limitations under the License.
 
 """
-Given NMT model's .nemo file, this script can be used to translate text.
-USAGE Example:
-1. Obtain text file in src language. You can use sacrebleu to obtain standard test sets like so:
-    sacrebleu -t wmt14 -l de-en --echo src > wmt14-de-en.src
-2. Translate:
-    python nmt_transformer_infer.py --model=[Path to .nemo file] --srctext=wmt14-de-en.src --tgtout=wmt14-de-en.pre
+Given NMT model's .nemo file, this script can be used to measure the speed of
+inference for various batch sizes, and sequence lengths.
 """
 
 
 from argparse import ArgumentParser
 
 import torch
+import numpy as np
+import pprint
 
 import nemo.collections.nlp as nemo_nlp
 from nemo.utils import logging
@@ -36,21 +34,17 @@ import datetime
 def main():
     parser = ArgumentParser()
     parser.add_argument("--model", type=str, required=True, help="")
-    parser.add_argument("--srctext", type=str, required=True, help="")
-    parser.add_argument("--tgtout", type=str, required=True, help="")
-    parser.add_argument("--batch_size", type=int, default=256, help="")
-    parser.add_argument("--beam_size", type=int, default=4, help="")
+    parser.add_argument("--input_seq", type=str, default="Para preparar el terreno de la Segunda Guerra Mundial, permitieron que los banqueros y políticos crearan, de modo encubierto, una situación conflictiva a raíz de las enormes reparaciones de guerra impuestas sobre Alemania, con lo que se crearon las condiciones óptimas para la radicalización de las masas empobrecidas. Posteriormente, les bastó con servirles a los alemanes la solución del Führer, que era lo suficientemente fuerte y simple y señalaba a culpables, y construir después una Checoslovaquia compuesta por varias nacionalidades con una fuerte minoría alemana que debía representar y representó tan bien la función de la quinta columna, que prendió la llama y provocó el estallido de la guerra.", help="")
+    parser.add_argument("--batch_size", type=int, default=256, nargs='+', help="")
+    parser.add_argument("--seq_len", type=int, default=16, nargs='+', help="")
+    parser.add_argument("--beam_size", type=int, default=1, nargs='+', help="")
+    parser.add_argument("--batches", type=int, default=100, help="")
     parser.add_argument("--len_pen", type=float, default=0.6, help="")
     parser.add_argument("--max_delta_length", type=int, default=5, help="")
     parser.add_argument("--target_lang", type=str, default=None, help="")
     parser.add_argument("--source_lang", type=str, default=None, help="")
-    parser.add_argument("--fixed_len_penaly", type=float, default=-1, help="")
-    # If given, append a line with current execution time to timeout file name
-    parser.add_argument("--timeout", type=str, default="", help="")
-    # if > 0 will profile the specified amount of batches, -1 for all batches
-    parser.add_argument("--profile_batches", type=int, default=0, help="")
-    # If given, will save profiler output
-    parser.add_argument("--profout", type=str, default="", help="")
+    # If given, will save results
+    parser.add_argument("--results_out", type=str, default="", help="")
 
 
     args = parser.parse_args()
@@ -59,7 +53,6 @@ def main():
         logging.info("Attempting to initialize from .nemo file")
         model = nemo_nlp.models.machine_translation.MTEncDecModel.restore_from(restore_path=args.model)
         src_text = []
-        tgt_text = []
     else:
         raise NotImplemented(f"Only support .nemo files, but got: {args.model}")
 
@@ -72,73 +65,39 @@ def main():
     if torch.cuda.is_available():
         model = model.cuda()
 
-    logging.info(f"Translating: {args.srctext}")
+    input_seq = input_seq.strip() * 2
+    input_seq_words = input_seq.split(' ')
+    N = len(input_seq_words)
+    results_dict = dict()
 
-    total_time = 0
+    for beam_size in args.beam_size
+        for batch_size in args.batch_size:
+            for seq_len in args.seq_len:
+                # build a batch
+                src_text = []
+                I0 = N - seq_len
+                for b in range(batch_size):
+                    i0 = np.random.randint(I0)
+                    i1 = i0 + seq_len
+                    src_text.append(input_seq_words[i0:i1].join(' '))
 
-    profile_enable = (args.profile_batches != 0)
-
-    count = 0
-    with open(args.srctext, 'r') as src_f:
-        with torch.autograd.profiler.profile(
-            enabled=profile_enable,
-            use_cuda=torch.cuda.is_available(),
-            record_shapes=False,
-            with_stack=True,
-            ) as prof:
-            for line in src_f:
-                src_text.append(line.strip())
-                if len(src_text) == args.batch_size:
+                # repeat each batch multiple times
+                cur_time = []
+                for i in range(args.batches):
                     t0 = time.time()
                     res = model.translate(text=src_text, source_lang=args.source_lang, target_lang=args.target_lang)
                     t1 = time.time()
-                    total_time = total_time + t1 - t0
-                    if len(res) != len(src_text):
-                        print(len(res))
-                        print(len(src_text))
-                        print(res)
-                        print(src_text)
-                    tgt_text += res
-                    src_text = []
+                    cur_time.append(t1 - t0)
 
-                    if profile_enable:
-                        if args.profile_batches > 0:
-                            args.profile_batches -= 1
-                        if args.profile_batches == 0:
-                            break
+                name = f"beam={beam_size}_batch={batch_size}_seq_len={seq_len}"
+                results_dict[name] = np.mean(cur_time)
 
-                count += 1
-                # if count % 300 == 0:
-                #    print(f"Translated {count} sentences")
-            if len(src_text) > 0:
-                t0 = time.time()
-                tgt_text += model.translate(text=src_text, source_lang=args.source_lang, target_lang=args.target_lang)
-                t1 = time.time()
-                total_time = total_time + t1 - t0
+    # TODO: print results
+    logger.info(pprint.pformat(results_dict))
 
-    with open(args.tgtout, 'w') as tgt_f:
-        for line in tgt_text:
-            tgt_f.write(line + "\n")
-
-    if profile_enable:
-        trace_desc = prof.key_averages().table(sort_by="self_cpu_time_total")
-        # save trace if output file is given
-        if args.profout:
-            # prof.export_chrome_trace(args.profout)
-            with open(args.profout, "w") as fh:
-                fh.write(trace_desc)
-
-        # print trace
-        logging.info(trace_desc)
-
-    logging.info("Translation time: {total_time} [{ftotal_time}]".format(
-        total_time=total_time,
-        ftotal_time=str(datetime.timedelta(seconds=total_time)),
-    ))
-
-    if args.timeout:
-        with open(args.timeout, "a") as fh:
-            fh.write(f"{total_time}\n")
+    # if args.results_out:
+    #     with open(args.results_out, "a") as fh:
+    #         fh.write(f"{total_time}\n")
 
 if __name__ == '__main__':
     main()  # noqa pylint: disable=no-value-for-parameter
