@@ -47,6 +47,10 @@ def main():
     parser.add_argument("--fixed_len_penaly", type=float, default=-1, help="")
     # If given, append a line with current execution time to timeout file name
     parser.add_argument("--timeout", type=str, default="", help="")
+    # if > 0 will profile the specified amount of batches
+    parser.add_argument("--profile_batches", type=int, default=-1, help="")
+    # If given, will save profiler output in chrome tracing format
+    parser.add_argument("--profout", type=str, default="", help="")
 
 
     args = parser.parse_args()
@@ -72,24 +76,38 @@ def main():
 
     t0 = time.time()
 
+    profile_enable = (args.profile_batches > 0)
+
     count = 0
     with open(args.srctext, 'r') as src_f:
-        for line in src_f:
-            src_text.append(line.strip())
-            if len(src_text) == args.batch_size:
-                res = model.translate(text=src_text, source_lang=args.source_lang, target_lang=args.target_lang)
-                if len(res) != len(src_text):
-                    print(len(res))
-                    print(len(src_text))
-                    print(res)
-                    print(src_text)
-                tgt_text += res
-                src_text = []
-            count += 1
-            # if count % 300 == 0:
-            #    print(f"Translated {count} sentences")
-        if len(src_text) > 0:
-            tgt_text += model.translate(text=src_text, source_lang=args.source_lang, target_lang=args.target_lang)
+        with torch.autograd.profiler.profile(
+            enabled=profile_enable,
+            use_cuda=torch.cuda.is_available(),
+            record_shapes=False,
+            with_stack=True,
+            ) as prof:
+            for line in src_f:
+                src_text.append(line.strip())
+                if len(src_text) == args.batch_size:
+                    res = model.translate(text=src_text, source_lang=args.source_lang, target_lang=args.target_lang)
+                    if len(res) != len(src_text):
+                        print(len(res))
+                        print(len(src_text))
+                        print(res)
+                        print(src_text)
+                    tgt_text += res
+                    src_text = []
+
+                    if profile_enable:
+                        args.profile_batches -= 1
+                        if args.profile_batches <= 0:
+                            break
+
+                count += 1
+                # if count % 300 == 0:
+                #    print(f"Translated {count} sentences")
+            if len(src_text) > 0:
+                tgt_text += model.translate(text=src_text, source_lang=args.source_lang, target_lang=args.target_lang)
 
     t1 = time.time()
 
@@ -107,6 +125,13 @@ def main():
         for line in tgt_text:
             tgt_f.write(line + "\n")
 
+    if profile_enable:
+        # save trace if output file is given
+        if args.profout:
+            prof.export_chrome_trace(args.profout)
+
+        # print trace
+        logging.info(prof.key_averages().table(sort_by="self_cpu_time_total"))
 
 if __name__ == '__main__':
     main()  # noqa pylint: disable=no-value-for-parameter
