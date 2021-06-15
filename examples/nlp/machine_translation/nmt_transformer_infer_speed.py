@@ -61,8 +61,8 @@ def main():
     if torch.cuda.is_available():
         model = model.cuda()
 
-    input_seq = input_seq.strip() * 2
-    input_seq_words = input_seq.split(' ')
+    input_seq = args.input_seq.strip()
+    input_seq_words = input_seq.split(' ') * 2
     N = len(input_seq_words)
     results_dict = dict()
 
