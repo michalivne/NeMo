@@ -97,7 +97,7 @@ def main():
 
     # print results
     fresults = pprint.pformat(results_dict)
-    logging.info(fresults)
+    logging.info("\n"+fresults)
 
     if args.results_out:
         with open(args.results_out, "w") as fh:
