@@ -49,7 +49,7 @@ def main():
     parser.add_argument("--timeout", type=str, default="", help="")
     # if > 0 will profile the specified amount of batches, -1 for all batches
     parser.add_argument("--profile_batches", type=int, default=0, help="")
-    # If given, will save profiler output in chrome tracing format
+    # If given, will save profiler output
     parser.add_argument("--profout", type=str, default="", help="")
 
 
@@ -130,12 +130,15 @@ def main():
             tgt_f.write(line + "\n")
 
     if profile_enable:
+        trace_desc = prof.key_averages().table(sort_by="self_cpu_time_total")
         # save trace if output file is given
         if args.profout:
-            prof.export_chrome_trace(args.profout)
+            # prof.export_chrome_trace(args.profout)
+            with open(args.profout, "w") as fh:
+                fh.write(trace_desc)
 
         # print trace
-        logging.info(prof.key_averages().table(sort_by="self_cpu_time_total"))
+        logging.info(trace_desc)
 
 if __name__ == '__main__':
     main()  # noqa pylint: disable=no-value-for-parameter
