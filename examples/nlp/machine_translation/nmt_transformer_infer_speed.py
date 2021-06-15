@@ -90,6 +90,10 @@ def main():
                     cur_time.append(t1 - t0)
 
                 results_dict[name] = np.mean(cur_time)
+                print("{mean} +/- {std}".format(
+                    mean=np.mean(cur_time),
+                    std=np.std(cur_time),
+                ))
 
     # TODO: print results
     logger.info(pprint.pformat(results_dict))
