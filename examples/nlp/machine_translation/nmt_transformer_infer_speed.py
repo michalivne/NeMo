@@ -95,12 +95,13 @@ def main():
                     std=np.std(cur_time),
                 ))
 
-    # TODO: print results
-    logger.info(pprint.pformat(results_dict))
+    # print results
+    fresults = pprint.pformat(results_dict)
+    logger.info(fresults)
 
-    # if args.results_out:
-    #     with open(args.results_out, "a") as fh:
-    #         fh.write(f"{total_time}\n")
+    if args.results_out:
+        with open(args.results_out, "w") as fh:
+            fh.write(f"{fresults}\n")
 
 
 if __name__ == '__main__':
