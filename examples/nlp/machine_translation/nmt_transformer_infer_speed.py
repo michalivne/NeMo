@@ -85,6 +85,7 @@ def main():
                 cur_time = []
                 for i in range(args.batches):
                     t0 = time.time()
+                    import pudb; pudb.set_trace()
                     res = model.translate(text=src_text, source_lang=args.source_lang, target_lang=args.target_lang)
                     t1 = time.time()
                     cur_time.append(t1 - t0)
