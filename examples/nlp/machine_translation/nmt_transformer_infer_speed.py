@@ -67,7 +67,7 @@ def main():
     results_dict = dict()
 
     for beam_size in args.beam_size:
-        model.beam_search.beam_size = args.beam_size
+        model.beam_search.beam_size = beam_size
 
         for batch_size in args.batch_size:
             for seq_len in args.seq_len:
