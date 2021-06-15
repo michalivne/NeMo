@@ -116,15 +116,6 @@ def main():
                 t1 = time.time()
                 total_time = total_time + t1 - t0
 
-    logging.info("Translation time: {total_time} [{ftotal_time}]".format(
-        total_time=total_time,
-        ftotal_time=str(datetime.timedelta(seconds=total_time)),
-    ))
-
-    if args.timeout:
-        with open(args.timeout, "a") as fh:
-            fh.write(f"{total_time}\n")
-
     with open(args.tgtout, 'w') as tgt_f:
         for line in tgt_text:
             tgt_f.write(line + "\n")
@@ -139,6 +130,15 @@ def main():
 
         # print trace
         logging.info(trace_desc)
+
+    logging.info("Translation time: {total_time} [{ftotal_time}]".format(
+        total_time=total_time,
+        ftotal_time=str(datetime.timedelta(seconds=total_time)),
+    ))
+
+    if args.timeout:
+        with open(args.timeout, "a") as fh:
+            fh.write(f"{total_time}\n")
 
 if __name__ == '__main__':
     main()  # noqa pylint: disable=no-value-for-parameter
