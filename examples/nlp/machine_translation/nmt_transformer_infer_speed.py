@@ -79,7 +79,7 @@ def main():
                 for b in range(batch_size):
                     i0 = np.random.randint(I0)
                     i1 = i0 + seq_len
-                    src_text.append(input_seq_words[i0:i1].join(' '))
+                    src_text.append(''.join(input_seq_words[i0:i1]))
 
                 # repeat each batch multiple times
                 cur_time = []
