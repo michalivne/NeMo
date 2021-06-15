@@ -73,6 +73,8 @@ def main():
     for beam_size in args.beam_size
         for batch_size in args.batch_size:
             for seq_len in args.seq_len:
+                name = f"beam={beam_size}_batch={batch_size}_seq_len={seq_len}"
+                print(name)
                 # build a batch
                 src_text = []
                 I0 = N - seq_len
@@ -89,7 +91,6 @@ def main():
                     t1 = time.time()
                     cur_time.append(t1 - t0)
 
-                name = f"beam={beam_size}_batch={batch_size}_seq_len={seq_len}"
                 results_dict[name] = np.mean(cur_time)
 
     # TODO: print results
