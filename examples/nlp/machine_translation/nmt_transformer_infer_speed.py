@@ -46,7 +46,6 @@ def main():
     # If given, will save results
     parser.add_argument("--results_out", type=str, default="", help="")
 
-
     args = parser.parse_args()
     torch.set_grad_enabled(False)
     if args.model.endswith(".nemo"):
@@ -70,7 +69,7 @@ def main():
     N = len(input_seq_words)
     results_dict = dict()
 
-    for beam_size in args.beam_size
+    for beam_size in args.beam_size:
         for batch_size in args.batch_size:
             for seq_len in args.seq_len:
                 name = f"beam={beam_size}_batch={batch_size}_seq_len={seq_len}"
@@ -99,6 +98,7 @@ def main():
     # if args.results_out:
     #     with open(args.results_out, "a") as fh:
     #         fh.write(f"{total_time}\n")
+
 
 if __name__ == '__main__':
     main()  # noqa pylint: disable=no-value-for-parameter
