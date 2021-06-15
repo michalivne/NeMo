@@ -47,8 +47,8 @@ def main():
     parser.add_argument("--fixed_len_penaly", type=float, default=-1, help="")
     # If given, append a line with current execution time to timeout file name
     parser.add_argument("--timeout", type=str, default="", help="")
-    # if > 0 will profile the specified amount of batches
-    parser.add_argument("--profile_batches", type=int, default=-1, help="")
+    # if > 0 will profile the specified amount of batches, -1 for all batches
+    parser.add_argument("--profile_batches", type=int, default=0, help="")
     # If given, will save profiler output in chrome tracing format
     parser.add_argument("--profout", type=str, default="", help="")
 
@@ -76,7 +76,7 @@ def main():
 
     total_time = 0
 
-    profile_enable = (args.profile_batches > 0)
+    profile_enable = (args.profile_batches != 0)
 
     count = 0
     with open(args.srctext, 'r') as src_f:
@@ -102,8 +102,9 @@ def main():
                     src_text = []
 
                     if profile_enable:
-                        args.profile_batches -= 1
-                        if args.profile_batches <= 0:
+                        if args.profile_batches > 0:
+                            args.profile_batches -= 1
+                        if args.profile_batches == 0:
                             break
 
                 count += 1
