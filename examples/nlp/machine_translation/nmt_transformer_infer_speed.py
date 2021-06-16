@@ -56,7 +56,7 @@ def main():
         raise NotImplemented(f"Only support .nemo files, but got: {args.model}")
 
     model.beam_search.len_pen = args.len_pen
-    model.beam_search.max_delta_length = args.max_delta_length
+    model.beam_search.max_delta_len = args.max_delta_length
 
     if torch.cuda.is_available():
         model = model.cuda()

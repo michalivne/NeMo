@@ -4,7 +4,7 @@ do_training: True # set to False if only preprocessing data
 model:
   beam_size: 4
   len_pen: 0.6
-  max_generation_delta: 30
+  max_generation_delta: 200
   label_smoothing: 0.0
   shared_tokenizer: True # train tokenizer model across src and tgt train data
   preproc_out_dir: null # path to store data preprocessing outputs
