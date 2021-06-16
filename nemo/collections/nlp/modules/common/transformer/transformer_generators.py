@@ -310,6 +310,7 @@ class BeamSearchSequenceGenerator(GreedySequenceGenerator):
         # length penalty correction
         prefixes_len = torch.zeros_like(scores).fill_(prefixes.size(1) + 1)
 
+        import pudb; pudb.set_trace()
         for i in range(max_generation_length):
 
             # mask all finished hypotheses to exclude them from beam
