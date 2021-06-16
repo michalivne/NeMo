@@ -63,7 +63,7 @@ def main():
 
     model.beam_search.beam_size = args.beam_size
     model.beam_search.len_pen = args.len_pen
-    model.beam_search.max_delta_length = args.max_delta_length
+    model.beam_search.max_delta_len = args.max_delta_length
     if args.fixed_len_penaly > 0:
         model.beam_search.fixed_len_penaly = args.fixed_len_penaly
 
