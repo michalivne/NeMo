@@ -40,7 +40,7 @@ def main():
     parser.add_argument("--beam_size", type=int, default=1, nargs='+', help="")
     parser.add_argument("--batches", type=int, default=100, help="")
     parser.add_argument("--len_pen", type=float, default=0.6, help="")
-    parser.add_argument("--max_delta_length", type=int, default=200, help="")
+    parser.add_argument("--max_delta_length", type=int, default=0, help="")
     parser.add_argument("--target_lang", type=str, default=None, help="")
     parser.add_argument("--source_lang", type=str, default=None, help="")
     # If given, will save results
