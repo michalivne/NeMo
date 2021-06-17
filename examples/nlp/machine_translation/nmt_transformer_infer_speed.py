@@ -41,6 +41,7 @@ def main():
     parser.add_argument("--batches", type=int, default=100, help="")
     parser.add_argument("--len_pen", type=float, default=0.6, help="")
     parser.add_argument("--max_delta_length", type=int, default=0, help="")
+    parser.add_argument("--bottleneck_size", type=int, default=-1, help="")
     parser.add_argument("--target_lang", type=str, default=None, help="")
     parser.add_argument("--source_lang", type=str, default=None, help="")
     # If given, will save results
@@ -74,6 +75,13 @@ def main():
             for seq_len in args.seq_len:
                 name = f"beam={beam_size}_batch={batch_size}_seq_len={seq_len}"
                 print(name)
+
+                # update max_delta_length if we have a bottleneck
+                if args.bottleneck_size > 0:
+                    model.beam_search.max_delta_len = (
+                        args.max_delta_length + args.seq_len - args.bottleneck_size
+                    )
+
                 # build a batch
                 src_text = []
                 I0 = N - seq_len
