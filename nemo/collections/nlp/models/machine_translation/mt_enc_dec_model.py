@@ -1377,7 +1377,6 @@ class MTMIMModel(MTEncDecModel):
         """
         mode = self.training
         try:
-            import pudb; pudb.set_trace()
             self.eval()
             src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
 
