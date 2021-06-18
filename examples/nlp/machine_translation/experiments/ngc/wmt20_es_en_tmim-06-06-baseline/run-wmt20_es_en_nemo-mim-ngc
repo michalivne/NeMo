@@ -70,7 +70,7 @@ nvidia-smi \
       +exp_manager.checkpoint_callback_params.always_save_nemo=true \
       +exp_manager.checkpoint_callback_params.save_best_model=true \
       model.beam_size=4 \
-      model.max_generation_delta=5 \
+      model.max_generation_delta=200 \
       model.len_pen=${LEN_PENALTY} \
       model.label_smoothing=${LABEL_SMOOTHING} \
       model.src_language=es \
