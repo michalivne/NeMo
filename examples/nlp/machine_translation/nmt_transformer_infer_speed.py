@@ -79,7 +79,7 @@ def main():
                 # update max_delta_length if we have a bottleneck
                 if args.bottleneck_size > 0:
                     model.beam_search.max_delta_len = (
-                        args.max_delta_length + seq_len - args.bottleneck_size
+                        args.max_delta_length + max(seq_len - args.bottleneck_size, 0)
                     )
 
                 # build a batch
