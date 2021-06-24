@@ -28,9 +28,11 @@ import torch
 
 import nemo.collections.nlp as nemo_nlp
 from nemo.utils import logging
+from nemo.collections.nlp.modules.common.transformer import BeamSearchSequenceGenerator, TopKSequenceGenerator
 
 import time
 import datetime
+
 
 def main():
     parser = ArgumentParser()
@@ -40,6 +42,7 @@ def main():
     parser.add_argument("--tgtout", type=str, required=True, help="")
     parser.add_argument("--batch_size", type=int, default=256, help="")
     parser.add_argument("--beam_size", type=int, default=4, help="")
+    parser.add_argument('--top_k_sampling', action='store_true', help="")
     parser.add_argument("--len_pen", type=float, default=0.0, help="")
     parser.add_argument("--max_delta_length", type=int, default=30, help="")
     parser.add_argument("--target_lang", type=str, default=None, help="")
@@ -61,11 +64,26 @@ def main():
     if args.model_type:
         model.model_type = args.model_type
 
-    model.beam_search.beam_size = args.beam_size
-    model.beam_search.len_pen = args.len_pen
-    model.beam_search.max_delta_len = args.max_delta_length
-    if args.fixed_len_penaly > 0:
-        model.beam_search.fixed_len_penaly = args.fixed_len_penaly
+    if args.top_k_sampling:
+        model.beam_search = TopKSequenceGenerator(
+            embedding=model.decoder.embedding,
+            decoder=model.decoder.decoder,
+            log_softmax=model.log_softmax,
+            beam_size=args.beam_size,
+            max_sequence_length=model.decoder.max_sequence_length,
+            bos=model.decoder_tokenizer.bos_id,
+            pad=model.decoder_tokenizer.pad_id,
+            eos=model.decoder_tokenizer.eos_id,
+            len_pen=args.len_pen,
+            max_delta_length=args.max_delta_length,
+        )
+    else:
+        model.beam_search.beam_size = args.beam_size
+        model.beam_search.len_pen = args.len_pen
+        model.beam_search.max_delta_len = args.max_delta_length
+
+        if args.fixed_len_penaly > 0:
+            model.beam_search.fixed_len_penaly = args.fixed_len_penaly
 
     if torch.cuda.is_available():
         model = model.cuda()
