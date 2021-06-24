@@ -70,11 +70,11 @@ def main():
             decoder=model.decoder.decoder,
             log_softmax=model.log_softmax,
             beam_size=args.beam_size,
+            temperature=1.0,
             max_sequence_length=model.decoder.max_sequence_length,
             bos=model.decoder_tokenizer.bos_id,
             pad=model.decoder_tokenizer.pad_id,
             eos=model.decoder_tokenizer.eos_id,
-            len_pen=args.len_pen,
             max_delta_length=args.max_delta_length,
         )
     else:
