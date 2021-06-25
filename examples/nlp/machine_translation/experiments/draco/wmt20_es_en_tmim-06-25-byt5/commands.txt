@@ -1,0 +1,1 @@
+../launcher_script.sh -n 7 seq2seq-yttm.sub
