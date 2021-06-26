@@ -30,6 +30,7 @@ WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
 
 RECON=true
 STEPS=300000
+WARMUP_STEPS=150000
 VOCAB_SIZE=32000
 
 
@@ -59,15 +60,15 @@ echo "*******STARTING********" \
 && nvidia-smi \
 && pip install wandb==0.10.31 \
 && wandb login ${WANDBLOGIN} \
+&& cd /code \
+&& ./reinstall.sh \
 && cd /code/examples/nlp/machine_translation \
-&& git rev-parse HEAD \
+&& echo "git:" `git rev-parse HEAD` \
 && export PYTHONPATH="/code/.:${PYTHONPATH}" \
 && python -c 'import pytorch_lightning as ptl; print(ptl.__version__)' \
-&& python -- enc_dec_nmt.py \
 && python -- enc_dec_nmt-bottleneck.py \
-&& python -- enc_dec_nmt-mim.py \
       --config-path=conf \
-      --config-name=mim_base \
+      --config-name=aayn_bottleneck \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
       exp_manager.name=${EXP_NAME} \
@@ -86,17 +87,18 @@ echo "*******STARTING********" \
       +exp_manager.checkpoint_callback_params.always_save_nemo=true \
       +exp_manager.checkpoint_callback_params.save_best_model=true \
       model.beam_size=4 \
-      model.max_generation_delta=200 \
+      model.max_generation_delta=256 \
       model.len_pen=${LEN_PENALTY} \
       model.label_smoothing=${LABEL_SMOOTHING} \
       model.src_language=es \
       model.tgt_language=en \
       model.model_type=${MODEL_TYPE} \
-      model.latent_size=1024 \
+      model.att_bridge_size=1024 \
       model.ortho_loss_coef=0.0 \
       model.att_bridge_k=${ATT_BRIDGE_K} \
-      model.att_bridge_size=${ATT_BRIDGE_SIZE} \
+      model.att_bridge_inner_size=${ATT_BRIDGE_SIZE} \
       model.recon_per_token=${RECON} \
+      model.non_recon_warmup_batches=${WARMUP_STEPS} \
       model.encoder.hidden_size=1024 \
       model.encoder.inner_size=4096 \
       model.encoder.num_attention_heads=16 \
