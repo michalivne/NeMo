@@ -1,1 +1,6 @@
 ../launcher_script.sh -n 7 seq2seq-yttm.sub
+../launcher_script.sh -n 7 seq2seq-br-k16-yttm.sub
+../launcher_script.sh -n 7 seq2seq-mim-k16-yttm.sub
+../launcher_script.sh -n 7 seq2seq-byte-level.sub
+../launcher_script.sh -n 7 seq2seq-br-k16-byte-level.sub
+../launcher_script.sh -n 7 seq2seq-mim-k16-byte-level.sub
