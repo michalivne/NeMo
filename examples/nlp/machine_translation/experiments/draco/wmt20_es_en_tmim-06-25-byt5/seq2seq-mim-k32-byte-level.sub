@@ -105,12 +105,14 @@ echo "*******STARTING********" \
       model.encoder.attn_layer_dropout=0.1 \
       model.encoder.ffn_dropout=0.1 \
       model.encoder.num_layers=12 \
+      model.encoder.max_sequence_length=1024 \
       model.decoder.hidden_size=1024 \
       model.decoder.inner_size=4096 \
       model.decoder.num_attention_heads=16 \
       model.decoder.attn_layer_dropout=0.1 \
       model.decoder.ffn_dropout=0.1 \
       model.decoder.num_layers=6 \
+      model.decoder.max_sequence_length=1024 \
       model.optim.lr=0.0004 \
       model.encoder_tokenizer.library=${TOKENIZER_NAME} \
       model.decoder_tokenizer.library=${TOKENIZER_NAME} \
