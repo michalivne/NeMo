@@ -17,7 +17,7 @@ PROJECT_TAG="-06-25-byt5"
 
 TOKENIZER_NAME=yttm
 MODEL_TYPE=seq2seq
-ATT_BRIDGE_K=16
+ATT_BRIDGE_K=0
 LEN_PENALTY=0.6
 LABEL_SMOOTHING=0.1
 ATT_BRIDGE_SIZE=2048
@@ -87,7 +87,7 @@ echo "*******STARTING********" \
       +exp_manager.checkpoint_callback_params.always_save_nemo=true \
       +exp_manager.checkpoint_callback_params.save_best_model=true \
       model.beam_size=4 \
-      model.max_generation_delta=256 \
+      model.max_generation_delta=5 \
       model.len_pen=${LEN_PENALTY} \
       model.label_smoothing=${LABEL_SMOOTHING} \
       model.src_language=es \
