@@ -104,7 +104,7 @@ echo "*******STARTING********" \
       model.encoder.num_attention_heads=16 \
       model.encoder.attn_layer_dropout=0.1 \
       model.encoder.ffn_dropout=0.1 \
-      model.encoder.num_layers=12 \
+      model.encoder.num_layers=10 \
       model.encoder.max_sequence_length=1024 \
       model.decoder.hidden_size=1024 \
       model.decoder.inner_size=4096 \
