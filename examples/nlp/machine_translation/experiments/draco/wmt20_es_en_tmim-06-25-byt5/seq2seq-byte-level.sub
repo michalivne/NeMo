@@ -113,7 +113,7 @@ echo "*******STARTING********" \
       model.decoder.ffn_dropout=0.1 \
       model.decoder.num_layers=6 \
       model.decoder.max_sequence_length=1024 \
-      model.optim.lr=0.0004 \
+      model.optim.lr=0.0001 \
       model.encoder_tokenizer.library=${TOKENIZER_NAME} \
       model.decoder_tokenizer.library=${TOKENIZER_NAME} \
       model.train_ds.tokens_in_batch=8192 \
