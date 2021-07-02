@@ -10,7 +10,6 @@
 #SBATCH --ntasks-per-node=8    # n tasks per machine (one task per gpu) <required>
 #SBATCH --mem=0                 # all mem avail
 #SBATCH --mail-type=FAIL        # only send email on failure
-#SBATCH --ntasks-per-node=1     # n tasks per machine
 #SBATCH --overcommit            # Needed for pytorch
 set -x
 
