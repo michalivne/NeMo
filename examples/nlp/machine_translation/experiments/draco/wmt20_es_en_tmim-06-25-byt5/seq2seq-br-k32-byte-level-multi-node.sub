@@ -17,10 +17,10 @@ EXP_TAG=""
 PROJECT_TAG="-06-25-byt5"
 
 TOKENIZER_NAME=byte-level
-MODEL_TYPE=seq2seq-mim
+MODEL_TYPE=seq2seq-br
 ATT_BRIDGE_K=32
 LEN_PENALTY=0.0
-LABEL_SMOOTHING=0.0
+LABEL_SMOOTHING=0.1
 ATT_BRIDGE_SIZE=2048
 
 PROJECT_NAME=wmt20_es_en_tmim${PROJECT_TAG}
@@ -30,9 +30,11 @@ EXP_NAME="${MODEL_TYPE}_${TOKENIZER_NAME}_k${ATT_BRIDGE_K}_ls${LABEL_SMOOTHING}_
 WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
 
 RECON=true
-STEPS=300000
+STEPS=600000
 WARMUP_STEPS=200000
 VOCAB_SIZE=32000
+TOKENS_IN_BATCH=8192
+LR=0.0004
 
 
 # Container to be used by job. TIP: create "complete" containers, do not do pip/apt install as part of job
@@ -114,17 +116,17 @@ echo "*******STARTING********" \
       model.decoder.ffn_dropout=0.1 \
       model.decoder.num_layers=6 \
       model.decoder.max_sequence_length=1024 \
-      model.optim.lr=0.0004 \
+      model.optim.lr=${LR} \
       model.encoder_tokenizer.library=${TOKENIZER_NAME} \
       model.decoder_tokenizer.library=${TOKENIZER_NAME} \
-      model.train_ds.tokens_in_batch=16000 \
+      model.train_ds.tokens_in_batch=${TOKENS_IN_BATCH} \
       model.train_ds.use_tarred_dataset=true \
       +model.train_ds.reverse_lang_direction=true \
       model.train_ds.clean=false \
       model.train_ds.shard_strategy=replicate \
-      model.train_ds.metadata_file=/data/preproc-wmt20_en_es_nemo-byte-level.16000/metadata.tokens.16000.json \
-      model.train_ds.src_file_name=/data/train.clean.en-es.60.tok.es.shuffled \
-      model.train_ds.tgt_file_name=/data/train.clean.en-es.60.tok.en.shuffled \
+      model.train_ds.metadata_file=/data/preproc-wmt20_en_es_nemo-byte-level.${TOKENS_IN_BATCH}/metadata.tokens.${TOKENS_IN_BATCH}.json \
+      model.train_ds.src_file_name=/data/train.clean.en-es.60.tok.en.shuffled \
+      model.train_ds.tgt_file_name=/data/train.clean.en-es.60.tok.es.shuffled \
       model.validation_ds.clean=true \
       model.validation_ds.max_seq_length=1024 \
       model.validation_ds.src_file_name=/data/newstest2012-es-en.clean.tok.src \
@@ -133,7 +135,6 @@ echo "*******STARTING********" \
       model.test_ds.max_seq_length=1024 \
       model.test_ds.src_file_name=/data/newstest2013-es-en.clean.tok.src \
       model.test_ds.tgt_file_name=/data/newstest2013-es-en.clean.tok.ref \
-      model.preproc_out_dir=/data/preproc-wmt20_en_es_nemo-byte-level.16000/ \
       do_training=true
 EOF
 

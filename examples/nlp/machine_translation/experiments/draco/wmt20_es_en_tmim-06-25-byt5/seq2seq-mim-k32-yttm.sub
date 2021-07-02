@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#SBATCH --nv-meta=ml-model.seq2seq-bottleneck
 #SBATCH -A ent_aiapps_nlp
 #SBATCH -p batch_32GB           # batch, batch_16GB, Backfill... Check draco onboarding guide.
 #SBATCH -N 1                    # number of nodes
