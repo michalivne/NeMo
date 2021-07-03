@@ -30,7 +30,7 @@ EXP_NAME="${MODEL_TYPE}_${TOKENIZER_NAME}_k${ATT_BRIDGE_K}_ls${LABEL_SMOOTHING}_
 WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
 
 RECON=true
-STEPS=300000
+STEPS=600000
 WARMUP_STEPS=200000
 VOCAB_SIZE=32000
 
@@ -72,6 +72,7 @@ echo "*******STARTING********" \
       --config-name=aayn_bottleneck \
       'trainer.gpus=-1' \
       '~trainer.max_epochs' \
+      +exp_manager.resume_past_end=True \
       exp_manager.name=${EXP_NAME} \
       +trainer.max_steps=${STEPS} \
       +trainer.val_check_interval=1000 \

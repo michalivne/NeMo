@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 #SBATCH --nv-meta=ml-model.seq2seq-bottleneck
 #SBATCH -A ent_aiapps_nlp
-#SBATCH -p batch               # batch, batch_16GB, Backfill... Check draco onboarding guide.
-#SBATCH -N 4                    # number of nodes
+#SBATCH -p batch_32G            # batch, batch_16GB, Backfill... Check draco onboarding guide.
 #SBATCH -t 8:00:00              # wall time
 #SBATCH --exclusive             # exclusive node access
-#SBATCH --gres=gpu:8            # Specify the number of GPUs even if exclusive
+#SBATCH -N 4                    # number of nodes
 #SBATCH --gpus-per-node=8      # n gpus per machine <required>
 #SBATCH --ntasks-per-node=8    # n tasks per machine (one task per gpu) <required>
 #SBATCH --mem=0                 # all mem avail
@@ -62,10 +61,7 @@ read -r -d '' cmd <<EOF
 echo "*******STARTING********" \
 && echo "---------------" \
 && nvidia-smi \
-&& pip install wandb==0.10.31 \
 && wandb login ${WANDBLOGIN} \
-&& cd /code \
-&& ./reinstall.sh \
 && cd /code/examples/nlp/machine_translation \
 && echo "git:" `git rev-parse HEAD` \
 && export PYTHONPATH="/code/.:${PYTHONPATH}" \
@@ -124,10 +120,8 @@ echo "*******STARTING********" \
       model.train_ds.use_tarred_dataset=true \
       +model.train_ds.reverse_lang_direction=true \
       model.train_ds.clean=false \
-      model.train_ds.shard_strategy=replicate \
+      model.train_ds.shard_strategy=scatter \
       model.train_ds.metadata_file=/data/preproc-wmt20_en_es_nemo-byte-level.${TOKENS_IN_BATCH}/metadata.tokens.${TOKENS_IN_BATCH}.json \
-      model.train_ds.src_file_name=/data/train.clean.en-es.60.tok.en.shuffled \
-      model.train_ds.tgt_file_name=/data/train.clean.en-es.60.tok.es.shuffled \
       model.validation_ds.clean=true \
       model.validation_ds.max_seq_length=1024 \
       model.validation_ds.src_file_name=/data/newstest2012-es-en.clean.tok.src \
@@ -147,3 +141,5 @@ srun \
     --container-image="$CONTAINER" \
     --container-mounts=$MOUNTS \
     bash -c "${cmd}"
+
+set +x
