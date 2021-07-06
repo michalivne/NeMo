@@ -65,7 +65,6 @@ echo "*******STARTING********" \
 && nvidia-smi \
 && wandb login ${WANDBLOGIN} \
 && cd /code/ \
-&& ./reinstall.sh \
 && export PYTHONPATH="/code/.:${PYTHONPATH}" \
 && echo "git:" `git rev-parse HEAD` \
 && cd /code/examples/nlp/machine_translation \
@@ -80,7 +79,7 @@ echo "*******STARTING********" \
       +trainer.max_steps=${STEPS} \
       +trainer.val_check_interval=300 \
       +trainer.accumulate_grad_batches=1 \
-      +trainer.num_sanity_val_steps=-1 \
+      +trainer.num_sanity_val_steps=2 \
       +exp_manager.exp_dir=/results/ \
       +exp_manager.create_wandb_logger=True \
       +exp_manager.wandb_logger_kwargs.name=${EXP_NAME} \
