@@ -36,7 +36,7 @@ LR_WARMUP_STEPS=35000
 VOCAB_SIZE=32000
 MAX_LENGTH=1024
 TOKENS_IN_BATCH=4096
-LR=0.0001
+LR=0.0004
 
 
 # Container to be used by job. TIP: create "complete" containers, do not do pip/apt install as part of job
