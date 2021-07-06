@@ -76,7 +76,6 @@ echo "*******STARTING********" \
       'trainer.gpus=-1' \
       trainer.num_nodes=${SLURM_JOB_NUM_NODES} \
       '~trainer.max_epochs' \
-      do_training=true
       exp_manager.name=${EXP_NAME} \
       +trainer.max_steps=${STEPS} \
       +trainer.val_check_interval=300 \
@@ -141,6 +140,7 @@ echo "*******STARTING********" \
       model.test_ds.max_seq_length=${MAX_LENGTH} \
       model.test_ds.src_file_name=/data/newstest2013-es-en.clean.tok.src \
       model.test_ds.tgt_file_name=/data/newstest2013-es-en.clean.tok.ref \
+      do_training=true
 EOF
 
 
