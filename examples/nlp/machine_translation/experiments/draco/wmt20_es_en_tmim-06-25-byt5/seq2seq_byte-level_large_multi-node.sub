@@ -4,7 +4,7 @@
 #SBATCH -p batch_32GB            # batch, batch_16GB, Backfill... Check draco onboarding guide.
 #SBATCH -t 8:00:00              # wall time
 #SBATCH --exclusive             # exclusive node access
-#SBATCH -N 4                    # number of nodes
+#SBATCH -N 1                    # number of nodes
 #SBATCH --gpus-per-node=8      # n gpus per machine <required>
 #SBATCH --ntasks-per-node=8    # n tasks per machine (one task per gpu) <required>
 #SBATCH --mem=0                 # all mem avail
