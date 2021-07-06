@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+#SBATCH --nv-meta=ml-model.seq2seq-bottleneck
+#SBATCH -A ent_aiapps_nlp
+#SBATCH -p batch_32G            # batch, batch_16GB, Backfill... Check draco onboarding guide.
+#SBATCH -t 8:00:00              # wall time
+#SBATCH --exclusive             # exclusive node access
+#SBATCH -N 4                    # number of nodes
+#SBATCH --gpus-per-node=8      # n gpus per machine <required>
+#SBATCH --ntasks-per-node=8    # n tasks per machine (one task per gpu) <required>
+#SBATCH --mem=0                 # all mem avail
+#SBATCH --mail-type=FAIL        # only send email on failure
+#SBATCH --overcommit            # Needed for pytorch
+set -x
+
+
+EXP_TAG="_multi-node_large"
+PROJECT_TAG="-06-25-byt5"
+
+TOKENIZER_NAME=byte-level
+MODEL_TYPE=seq2seq
+ATT_BRIDGE_K=0
+LEN_PENALTY=0.6
+LABEL_SMOOTHING=0.1
+ATT_BRIDGE_SIZE=4096
+
+PROJECT_NAME=wmt20_es_en_tmim${PROJECT_TAG}
+EXP_NAME="${MODEL_TYPE}_${TOKENIZER_NAME}_k${ATT_BRIDGE_K}_ls${LABEL_SMOOTHING}_lp${LEN_PENALTY}${EXP_TAG}"
+
+
+WANDBLOGIN=1dadc548dae732414fcb97918f25942325315029
+
+RECON=true
+STEPS=700000
+RECON_WARMUP_STEPS=200000
+LR_WARMUP_STEPS=35000
+VOCAB_SIZE=32000
+MAX_LENGTH=1024
+TOKENS_IN_BATCH=4096
+LR=0.0001
+
+
+# Container to be used by job. TIP: create "complete" containers, do not do pip/apt install as part of job
+CONTAINER="gitlab-master.nvidia.com/mlivne/nemo_containers:nemo-1.0.0rc1"
+
+# Where you code is
+CODE_DIR=~/code/NeMo
+
+# Where training/validation data is, various manifests and configs
+DATA_DIR=~/datasets/73242/parallel
+
+# Where to store results and logs
+RESULTS_DIR=~/results/$PROJECT_NAME/$EXP_NAME
+
+mkdir -p $RESULTS_DIR
+OUTFILE=${RESULTS_DIR}/slurm-%j-%n.out
+ERRFILE=${RESULTS_DIR}/error-%j-%n.out
+
+# actually mount folders to container
+MOUNTS="${CODE_DIR}:/code,${RESULTS_DIR}:/results,${DATA_DIR}:/data"
+
+# Your actual script. Note that paths are inside container.
+read -r -d '' cmd <<EOF
+echo "*******STARTING********" \
+&& echo "---------------" \
+&& nvidia-smi \
+&& wandb login ${WANDBLOGIN} \
+&& cd /code/examples/nlp/machine_translation \
+&& echo "git:" `git rev-parse HEAD` \
+&& export PYTHONPATH="/code/.:${PYTHONPATH}" \
+&& python -c 'import pytorch_lightning as ptl; print(ptl.__version__)' \
+&& python -- enc_dec_nmt-bottleneck.py \
+      --config-path=conf \
+      --config-name=aayn_bottleneck \
+      'trainer.gpus=-1' \
+      trainer.num_nodes=${SLURM_JOB_NUM_NODES} \
+      '~trainer.max_epochs' \
+      do_training=true
+      exp_manager.name=${EXP_NAME} \
+      +trainer.max_steps=${STEPS} \
+      +trainer.val_check_interval=300 \
+      +trainer.accumulate_grad_batches=1 \
+      +trainer.num_sanity_val_steps=-1 \
+      +exp_manager.exp_dir=/results/ \
+      +exp_manager.create_wandb_logger=True \
+      +exp_manager.wandb_logger_kwargs.name=${EXP_NAME} \
+      +exp_manager.wandb_logger_kwargs.project=${PROJECT_NAME} \
+      +exp_manager.resume_if_exists=True \
+      +exp_manager.resume_ignore_no_checkpoint=True \
+      +exp_manager.create_checkpoint_callback=True \
+      +exp_manager.checkpoint_callback_params.monitor=val_sacreBLEU \
+      +exp_manager.checkpoint_callback_params.mode=max \
+      +exp_manager.checkpoint_callback_params.save_top_k=1 \
+      +exp_manager.checkpoint_callback_params.always_save_nemo=true \
+      +exp_manager.checkpoint_callback_params.save_best_model=true \
+      model.beam_size=3 \
+      model.max_generation_delta=3 \
+      model.len_pen=${LEN_PENALTY} \
+      model.label_smoothing=${LABEL_SMOOTHING} \
+      model.src_language=es \
+      model.tgt_language=en \
+      model.model_type=${MODEL_TYPE} \
+      model.att_bridge_size=2048 \
+      model.ortho_loss_coef=0.0 \
+      model.att_bridge_k=${ATT_BRIDGE_K} \
+      model.att_bridge_inner_size=${ATT_BRIDGE_SIZE} \
+      model.recon_per_token=${RECON} \
+      model.non_recon_warmup_batches=${RECON_WARMUP_STEPS} \
+      model.encoder.hidden_size=2048 \
+      model.encoder.inner_size=8192 \
+      model.encoder.num_attention_heads=16 \
+      model.encoder.attn_layer_dropout=0.1 \
+      model.encoder.ffn_dropout=0.1 \
+      model.encoder.num_layers=10 \
+      model.encoder.max_sequence_length=${MAX_LENGTH} \
+      model.decoder.hidden_size=2048 \
+      model.decoder.inner_size=8192 \
+      model.decoder.num_attention_heads=16 \
+      model.decoder.attn_layer_dropout=0.1 \
+      model.decoder.ffn_dropout=0.1 \
+      model.decoder.num_layers=2 \
+      model.decoder.max_sequence_length=${MAX_LENGTH} \
+      model.optim.lr=${LR} \
+      +model.optim.sched.warmup_steps=${LR_WARMUP_STEPS} \
+      '~model.optim.sched.warmup_ratio' \
+      model.encoder_tokenizer.library=${TOKENIZER_NAME} \
+      model.decoder_tokenizer.library=${TOKENIZER_NAME} \
+      model.train_ds.tokens_in_batch=${TOKENS_IN_BATCH} \
+      model.train_ds.use_tarred_dataset=true \
+      +model.train_ds.reverse_lang_direction=true \
+      model.train_ds.clean=false \
+      model.train_ds.shard_strategy=scatter \
+      model.train_ds.max_seq_length=${MAX_LENGTH} \
+      model.train_ds.metadata_file=/data/preproc-wmt20_en_es_nemo-byte-level.${TOKENS_IN_BATCH}/metadata.tokens.${TOKENS_IN_BATCH}.json \
+      model.validation_ds.clean=true \
+      model.validation_ds.max_seq_length=${MAX_LENGTH} \
+      model.validation_ds.src_file_name=/data/newstest2012-es-en.clean.tok.src \
+      model.validation_ds.tgt_file_name=/data/newstest2012-es-en.clean.tok.ref \
+      model.test_ds.clean=true \
+      model.test_ds.max_seq_length=${MAX_LENGTH} \
+      model.test_ds.src_file_name=/data/newstest2013-es-en.clean.tok.src \
+      model.test_ds.tgt_file_name=/data/newstest2013-es-en.clean.tok.ref \
+EOF
+
+
+srun \
+    --job-name=$EXP_NAME \
+    --output=$OUTFILE \
+    --error=$ERRFILE \
+    --container-image="$CONTAINER" \
+    --container-mounts=$MOUNTS \
+    bash -c "${cmd}"
+
+set +x
