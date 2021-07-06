@@ -40,7 +40,7 @@ LR=0.0001
 
 
 # Container to be used by job. TIP: create "complete" containers, do not do pip/apt install as part of job
-CONTAINER="gitlab-master.nvidia.com/mlivne/nemo_containers:nemo-1.0.0rc1"
+CONTAINER="gitlab-master.nvidia.com/mlivne/nemo_containers:nemo-1.0.0"
 
 # Where you code is
 CODE_DIR=~/code/NeMo
@@ -64,9 +64,11 @@ echo "*******STARTING********" \
 && echo "---------------" \
 && nvidia-smi \
 && wandb login ${WANDBLOGIN} \
-&& cd /code/examples/nlp/machine_translation \
-&& echo "git:" `git rev-parse HEAD` \
+&& cd /code/ \
+&& ./reinstall.sh \
 && export PYTHONPATH="/code/.:${PYTHONPATH}" \
+&& echo "git:" `git rev-parse HEAD` \
+&& cd /code/examples/nlp/machine_translation \
 && python -c 'import pytorch_lightning as ptl; print(ptl.__version__)' \
 && python -- enc_dec_nmt-bottleneck.py \
       --config-path=conf \
