@@ -13,7 +13,7 @@
 set -x
 
 
-EXP_TAG="_multi-node_large"
+EXP_TAG="_single-node_large"
 PROJECT_TAG="-06-25-byt5"
 
 TOKENIZER_NAME=byte-level
