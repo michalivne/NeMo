@@ -4,7 +4,7 @@
 #SBATCH -p batch_32GB            # batch, batch_16GB, Backfill... Check draco onboarding guide.
 #SBATCH -t 8:00:00              # wall time
 #SBATCH --exclusive             # exclusive node access
-#SBATCH -N 1                    # number of nodes
+#SBATCH -N 2                    # number of nodes
 #SBATCH --gpus-per-node=8      # n gpus per machine <required>
 #SBATCH --ntasks-per-node=8    # n tasks per machine (one task per gpu) <required>
 #SBATCH --mem=0                 # all mem avail
@@ -65,7 +65,7 @@ echo "*******STARTING********" \
 && nvidia-smi \
 && wandb login ${WANDBLOGIN} \
 && cd /code/ \
-&& export PYTHONPATH="/code/.:${PYTHONPATH}" \
+&& export PYTHONPATH="/code/:${PYTHONPATH}" \
 && echo "git:" `git rev-parse HEAD` \
 && cd /code/examples/nlp/machine_translation \
 && python -c 'import pytorch_lightning as ptl; print(ptl.__version__)' \
@@ -144,11 +144,11 @@ EOF
 
 
 srun \
-    --job-name=$EXP_NAME \
-    --output=$OUTFILE \
-    --error=$ERRFILE \
-    --container-image="$CONTAINER" \
-    --container-mounts=$MOUNTS \
+    --job-name=${EXP_NAME} \
+    --output=${OUTFILE} \
+    --error=${ERRFILE} \
+    --container-image="${CONTAINER}" \
+    --container-mounts=${MOUNTS} \
     bash -c "${cmd}"
 
 set +x
