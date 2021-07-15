@@ -135,7 +135,7 @@ class AAYNBaseConfig(MTEncDecModelConfig):
 
 @dataclass
 class MTBottleneckModelConfig(AAYNBaseConfig):
-    model_type: str = 'seq2seq-br'
+    model_type: str = 'seq2seq'
     min_logv: float = -6
     ortho_loss_coef: float = 0.0
     att_bridge_size: int = 512

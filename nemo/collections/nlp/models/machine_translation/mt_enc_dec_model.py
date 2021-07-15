@@ -688,14 +688,14 @@ class MTEncDecModel(EncDecNLPModel):
     def batch_translate(
         self, src: torch.LongTensor, src_mask: torch.LongTensor,
     ):
-        """	
-        Translates a minibatch of inputs from source language to target language.	
-        Args:	
-            src: minibatch of inputs in the src language (batch x seq_len)	
-            src_mask: mask tensor indicating elements to be ignored (batch x seq_len)	
-        Returns:	
-            translations: a list strings containing detokenized translations	
-            inputs: a list of string containing detokenized inputs	
+        """
+        Translates a minibatch of inputs from source language to target language.
+        Args:
+            src: minibatch of inputs in the src language (batch x seq_len)
+            src_mask: mask tensor indicating elements to be ignored (batch x seq_len)
+        Returns:
+            translations: a list strings containing detokenized translations
+            inputs: a list of string containing detokenized inputs
         """
         mode = self.training
         try:
@@ -845,6 +845,7 @@ class MTEncDecModel(EncDecNLPModel):
 
         return result
 
+
 class AttentionBridge(torch.nn.Module):
     """
     A multi-head attention bridge to project a variable-size hidden states
@@ -898,6 +899,71 @@ class AttentionBridge(torch.nn.Module):
         else:
             return M
 
+
+class PoolingBridge(torch.nn.Module):
+    """
+    A pooling reduction bridge.
+
+    Code is based on the paper https://arxiv.org/pdf/2012.07436.pdf
+    """
+
+    def __init__(self, hidden_size, kernel_size=2):
+        """
+        hidden_size - size of input hidden state
+        kernel_size - pooling kernel size (reduction factor)
+        """
+        super().__init__()
+
+        self.hidden_size = hidden_size
+        self.kernel_size = kernel_size
+
+        # build model
+
+        self.conv1d = torch.nn.Conv1d(
+            hidden_size, hidden_size,
+            kernel_size=3,
+        )
+        self.maxpool1d = torch.nn.MaxPool1d(kernel_size)
+        self.act = torch.nn.ReLU()
+
+    def forward(self, hidden, hidden_mask=None):
+        """
+        Project hidden [B x N x H] to a reduced-size [B x M x H]
+        M = N // kernel_size
+        """
+        B, N, H = hidden.shape
+
+        import pudb
+        pudb.set_trace()
+
+        # FIXME: switch to masked convolution
+        # mask values
+        if hidden_mask is not None:
+            hidden = hidden * (hidden_mask > 0).unsqueeze(-1).type_as(hidden)
+
+        # [B x H x N]
+        hidden = hidden.permute([0, 2, 1])
+        hidden = self.act(self.conv1d(hidden))
+
+        # ignore unmasked values
+        attention_mask = form_attention_mask(hidden_mask)
+        if attention_mask is not None:
+            attention_mask.squeeze_(1)
+            hidden = hidden + attention_mask.to(hidden)
+
+        # [B x H x N / ks]
+        hidden = self.maxpool1d(self.act(self.conv1d(hidden)))
+        # [B x N / ks x H]
+        hidden = hidden.permute([0, 2, 1])
+
+        # pool hidden_mask
+        hm_dtype = hidden_mask.dtype
+        hidden_mask = self.maxpool1d(hidden_mask.permute([0, 2, 1]).to(hidden))
+        hidden_mask = hidden_mask.permute([0, 2, 1]).to(hm_dtype)
+
+        return hidden, hidden_mask
+
+
 class MTBottleneckModel(MTEncDecModel):
     """
     Machine translation model which supports bottleneck architecture,
@@ -911,8 +977,7 @@ class MTBottleneckModel(MTEncDecModel):
 
         recon_per_token: bool = True
 
-
-        self.model_type: str = cfg.get("model_type", "seq2seq-br")
+        self.model_type: str = cfg.get("model_type", "seq2seq")
         self.min_logv: float = cfg.get("min_logv", -6)
         self.ortho_loss_coef: float = cfg.get("ortho_loss_coef", 0.0)
         self.att_bridge_size: int = cfg.get("att_bridge_size", 512)
@@ -929,7 +994,7 @@ class MTBottleneckModel(MTEncDecModel):
             )
             self.loss_fn = self.eval_loss_fn = loss_fn
 
-        if self.model_type not in ["seq2seq", "seq2seq-br", "seq2seq-mim", "seq2seq-vae"]:
+        if self.model_type not in ["seq2seq", "seq2seq-br", "seq2seq-pl", "seq2seq-mim", "seq2seq-vae"]:
             raise ValueError("Unknown model_type = {model_type}".format(
                 model_type=self.model_type,
             ))
@@ -941,24 +1006,31 @@ class MTBottleneckModel(MTEncDecModel):
             else:
                 self.latent2hidden = torch.nn.Identity()
 
-            self.att_bridge = AttentionBridge(
-                hidden_size=self.encoder.hidden_size,
-                k=self.att_bridge_k,
-                bridge_size=self.att_bridge_size,
-            )
+            if self.model_type == "seq2seq-pl":
+                self.pool_bridge = PoolingBridge(
+                    hidden_size=self.encoder.hidden_size,
+                )
 
-            # project dimension of encoder hidden to bridge dimension
-            if (self.encoder.hidden_size != self.att_bridge_size):
-                self.hidden2latent_mean = torch.nn.Linear(self.encoder.hidden_size, self.att_bridge_size)
-            else:
                 self.hidden2latent_mean = torch.nn.Identity()
+            else:
+                self.att_bridge = AttentionBridge(
+                    hidden_size=self.encoder.hidden_size,
+                    k=self.att_bridge_k,
+                    bridge_size=self.att_bridge_size,
+                )
 
-            # for probabilistic latent variable models we also need variance
-            if (self.model_type in ["seq2seq-mim", "seq2seq-vae"]):
+                # project dimension of encoder hidden to bridge dimension
                 if (self.encoder.hidden_size != self.att_bridge_size):
-                    self.hidden2latent_logv = torch.nn.Linear(self.encoder.hidden_size, self.att_bridge_size)
+                    self.hidden2latent_mean = torch.nn.Linear(self.encoder.hidden_size, self.att_bridge_size)
                 else:
-                    self.hidden2latent_logv = torch.nn.Identity()
+                    self.hidden2latent_mean = torch.nn.Identity()
+
+                # for probabilistic latent variable models we also need variance
+                if (self.model_type in ["seq2seq-mim", "seq2seq-vae"]):
+                    if (self.encoder.hidden_size != self.att_bridge_size):
+                        self.hidden2latent_logv = torch.nn.Linear(self.encoder.hidden_size, self.att_bridge_size)
+                    else:
+                        self.hidden2latent_logv = torch.nn.Identity()
         else:
             # seq2seq
             self.latent2hidden = torch.nn.Identity()
@@ -979,13 +1051,21 @@ class MTBottleneckModel(MTEncDecModel):
         """
         Sample latent code z with reparameterization from bridge for
         probabilistic latent variable models, or return value for
-        probabilistic models (seq2seq, seq2seq-br)
+        probabilistic models (seq2seq, seq2seq-br, seq2seq-ol)
         """
         if self.model_type == "seq2seq":
             # seq2seq
             z = z_mean = hidden
             z_logv = torch.zeros_like(hidden)
             z_mask = hidden_mask
+            ortho_loss = 0.0
+        elif self.model_type == "seq2seq-pl":
+            pool_hidden, pool_mask = self.pool_bridge(
+                hidden=hidden,
+                hidden_mask=hidden_mask,
+            )
+            z = z_mean = pool_hidden
+            z_mask = pool_mask
             ortho_loss = 0.0
         else:
             # seq2seq-br, seq2seq-mim, seq2seq-vae
@@ -1025,6 +1105,7 @@ class MTBottleneckModel(MTEncDecModel):
         else:
             return z, z_mean, z_logv, z_mask
 
+    # TODO: return dictionary of stats
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask, labels, train=True):
         src_hiddens = self.encoder(
@@ -1104,7 +1185,6 @@ class MTBottleneckModel(MTEncDecModel):
             else:
                 log_p_z = p_z.log_prob(z).sum(-1).sum(-1).mean()
 
-
             if self.model_type == "seq2seq-mim":
                 loss_terms = 0.5 * (log_q_z_given_x + log_p_z)
             elif self.model_type == "seq2seq-vae":
@@ -1116,7 +1196,7 @@ class MTBottleneckModel(MTEncDecModel):
             display_loss = log_p_x_given_z_per_token
             loss = -(
                     (computed_loss - computed_loss.detach()) +
-                    display_loss
+                display_loss
             )
         elif self.model_type in ["seq2seq", "seq2seq-br"]:
             loss = -(log_p_x_given_z - log_p_x_given_z.detach() + log_p_x_given_z_per_token)
