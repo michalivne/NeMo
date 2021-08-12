@@ -13,18 +13,21 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
 import torch
 from omegaconf.omegaconf import MISSING
 
 from nemo.collections.nlp.modules.common.decoder_module import DecoderModule
 from nemo.collections.nlp.modules.common.encoder_module import EncoderModule
+from nemo.collections.nlp.modules.common.transformer.perceiver_encoders import PerceiverEncoder
 from nemo.collections.nlp.modules.common.transformer.transformer_decoders import TransformerDecoder
 from nemo.collections.nlp.modules.common.transformer.transformer_encoders import TransformerEncoder
 from nemo.collections.nlp.modules.common.transformer.transformer_modules import TransformerEmbedding
 from nemo.core.classes.common import typecheck
 from nemo.core.classes.exportable import Exportable
+from nemo.core.neural_types import MaskType, NeuralType
+from nemo.core.neural_types.elements import BoolType
 
 # @dataclass
 # class TransformerConfig:
@@ -91,6 +94,7 @@ class TransformerEncoderNM(EncoderModule, Exportable):
         mask_future: bool = False,
         pre_ln: bool = False,
         pre_ln_final_layer_norm: bool = True,
+        hidden_steps = 10,
     ):
         super().__init__()
 
@@ -107,7 +111,7 @@ class TransformerEncoderNM(EncoderModule, Exportable):
             learn_positional_encodings=learn_positional_encodings,
         )
 
-        self._encoder = TransformerEncoder(
+        self._encoder = PerceiverEncoder(
             hidden_size=self._hidden_size,
             num_layers=num_layers,
             inner_size=inner_size,
@@ -119,17 +123,26 @@ class TransformerEncoderNM(EncoderModule, Exportable):
             mask_future=mask_future,
             pre_ln=pre_ln,
             pre_ln_final_layer_norm=pre_ln_final_layer_norm,
+            hidden_steps=hidden_steps
         )
 
     @typecheck()
     def forward(self, input_ids, encoder_mask):
         embeddings = self._embedding(input_ids=input_ids)
-        encoder_hidden_states = self._encoder(encoder_states=embeddings, encoder_mask=encoder_mask)
-        return encoder_hidden_states
+        encoder_hidden_states, return_mask = self._encoder(encoder_states=embeddings, encoder_mask=encoder_mask)
+        return encoder_hidden_states, return_mask
 
     @property
     def hidden_size(self):
         return self._hidden_size
+
+    @property
+    def output_types(self) -> Optional[Dict[str, NeuralType]]:
+        output_types = super().output_types
+        output_types.update(
+            {"hidden_mask": NeuralType(('B', 'T'), MaskType(), True),}
+        )
+        return output_types
 
     @property
     def vocab_size(self):
@@ -177,6 +190,7 @@ class TransformerDecoderNM(DecoderModule, Exportable):
         hidden_act: str = 'relu',
         pre_ln: bool = False,
         pre_ln_final_layer_norm: bool = True,
+        diagonal = 0,
     ):
         super().__init__()
 
@@ -204,6 +218,103 @@ class TransformerDecoderNM(DecoderModule, Exportable):
             hidden_act=hidden_act,
             pre_ln=pre_ln,
             pre_ln_final_layer_norm=pre_ln_final_layer_norm,
+            diagonal=diagonal,
+        )
+
+    @typecheck()
+    def forward(self, input_ids, decoder_mask, encoder_embeddings, encoder_mask):
+        decoder_embeddings = self._embedding(input_ids=input_ids)
+        decoder_hidden_states = self._decoder(
+            decoder_states=decoder_embeddings,
+            decoder_mask=decoder_mask,
+            encoder_states=encoder_embeddings,
+            encoder_mask=encoder_mask,
+        )
+        return decoder_hidden_states
+
+    @property
+    def hidden_size(self):
+        return self._hidden_size
+
+    @property
+    def vocab_size(self):
+        return self._vocab_size
+
+    @property
+    def max_sequence_length(self):
+        return self._max_sequence_length
+
+    @property
+    def embedding(self):
+        return self._embedding
+
+    @property
+    def decoder(self):
+        return self._decoder
+
+    def input_example(self):
+        """
+        Generates input examples for tracing etc.
+        Returns:
+            A tuple of input examples.
+        """
+        sample = next(self.parameters())
+        input_ids = torch.randint(low=0, high=2048, size=(2, 16), device=sample.device)
+        encoder_mask = torch.randint(low=0, high=1, size=(2, 16), device=sample.device)
+        return tuple([input_ids, encoder_mask, self._embedding(input_ids), encoder_mask])
+
+    def _prepare_for_export(self, **kwargs):
+        self._decoder.diagonal = None
+        super()._prepare_for_export(**kwargs)
+
+
+class PerceiverDecoderNM(DecoderModule, Exportable):
+    def __init__(
+        self,
+        vocab_size: int,
+        hidden_size: int,
+        num_layers: int,
+        inner_size: int,
+        num_attention_heads: int,
+        max_sequence_length: int = 512,
+        num_token_types: int = 2,
+        embedding_dropout: float = 0.0,
+        learn_positional_encodings: bool = False,
+        ffn_dropout: float = 0.0,
+        attn_score_dropout: float = 0.0,
+        attn_layer_dropout: float = 0.0,
+        hidden_act: str = 'relu',
+        pre_ln: bool = False,
+        pre_ln_final_layer_norm: bool = True,
+        diagonal = 0,
+    ):
+        super().__init__()
+
+        self._vocab_size = vocab_size
+        self._hidden_size = hidden_size
+        self._max_sequence_length = max_sequence_length
+
+        self._embedding = TransformerEmbedding(
+            vocab_size=max_sequence_length,
+            hidden_size=self.hidden_size,
+            max_sequence_length=max_sequence_length,
+            num_token_types=num_token_types,
+            embedding_dropout=embedding_dropout,
+            learn_positional_encodings=learn_positional_encodings,
+        )
+
+        self._decoder = TransformerDecoder(
+            hidden_size=self.hidden_size,
+            num_layers=num_layers,
+            inner_size=inner_size,
+            num_attention_heads=num_attention_heads,
+            ffn_dropout=ffn_dropout,
+            attn_score_dropout=attn_score_dropout,
+            attn_layer_dropout=attn_layer_dropout,
+            hidden_act=hidden_act,
+            pre_ln=pre_ln,
+            pre_ln_final_layer_norm=pre_ln_final_layer_norm,
+            diagonal=diagonal,
         )
 
     @typecheck()

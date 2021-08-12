@@ -19,12 +19,157 @@ import torch
 from nemo.collections.common.parts import NEG_INF, mask_padded_tokens
 
 __all__ = [
+    "ArgmaxGenerator",
     "GreedySequenceGenerator",
     "TopKSequenceGenerator",
     "BeamSearchSequenceGenerator",
     "BeamSearchSequenceGeneratorWithLanguageModel",
     "EnsembleBeamSearchSequenceGenerator",
 ]
+
+class ArgmaxGenerator:
+    def __init__(
+        self,
+        embedding,
+        decoder,
+        log_softmax,
+        pad=0,
+        bos=1,
+        eos=2,
+        max_sequence_length=512,
+        max_delta_length=20,
+        batch_size=1,
+        **kwargs
+    ):
+        super().__init__()
+        self.embedding = embedding
+        self.decoder = decoder
+        self.log_softmax = log_softmax
+        self.pad, self.bos, self.eos = pad, bos, eos
+        self.max_seq_length = max_sequence_length
+        self.max_delta_len = max_delta_length
+        self.batch_size = batch_size
+
+    def _prepare_for_search(self, encoder_hidden_states=None):
+        """
+        Helper function which defines starting sequence to begin generating
+        with and maximum allowed number of tokens to be generated.
+        """
+
+        decoder_parameter = next(self.decoder.parameters())
+        batch_size = self.batch_size
+
+        # for encoder-decoder generation, maximum length of generated sequence
+        # is min(max_sequence_length, src_len + max_delta_length)
+        if encoder_hidden_states is not None:
+            batch_size, src_len, _ = encoder_hidden_states.size()
+            max_seq_length = min(self.max_seq_length, src_len + self.max_delta_len)
+        else:
+            max_seq_length = self.max_seq_length
+
+        return batch_size, max_seq_length
+
+    def _forward(
+        self, decoder_input_ids=None, encoder_hidden_states=None, encoder_input_mask=None, return_beam_scores=False
+    ):
+        assert not return_beam_scores
+        batch_size, max_generation_length = self._prepare_for_search(encoder_hidden_states)
+
+        tgt = torch.arange(
+            start=0, end=max_generation_length, dtype=torch.long, device=encoder_hidden_states.device
+        )
+        tgt = tgt.unsqueeze(0)
+        old_tgt = tgt
+
+        # pad profile tracks sequences ending with <eos> token to replace
+        # everything after <eos> with <pad> token
+        # decoder_parameter = next(self.decoder.parameters())
+        # pad_profile = torch.zeros(batch_size, max_generation_length).long().to(decoder_parameter.device)
+
+        decoder_hidden_states = self.embedding.forward(tgt)
+        # decoder_input_mask = mask_padded_tokens(tgt, self.pad).float()
+        decoder_input_mask = torch.zeros(tgt.shape).long().to(tgt.device)
+
+        if encoder_hidden_states is not None:
+            decoder_mems_list = self.decoder.forward(
+                decoder_hidden_states,
+                decoder_input_mask,
+                encoder_hidden_states,
+                encoder_input_mask,
+                decoder_mems_list=None,
+                return_mems=True,
+            )
+        else:
+            decoder_mems_list = self.decoder.forward(
+                decoder_hidden_states, decoder_input_mask, decoder_mems_list, return_mems=True
+            )
+
+        log_probs = self.log_softmax.forward(hidden_states=decoder_mems_list[-1])
+        tgt = torch.argmax(log_probs, dim=-1)
+    
+        # next_tokens = self.pad * pad_profile + next_tokens * (1 - pad_profile)
+        # pad_profile = torch.max(pad_profile, (next_tokens == self.eos).long())
+        # tgt = torch.cat((tgt, next_tokens), dim=-1)
+
+        # print("encoder_hidden_states={}, encoder_input_mask={}, decoder_hidden_states={}, old_tgt={}, log_probs={}, tgt={}".format(
+        #     encoder_hidden_states.shape, encoder_input_mask.shape, decoder_hidden_states.shape, old_tgt.shape, log_probs.shape, tgt.shape
+        # ))
+
+        for i in range(batch_size):
+            for j in range(max_generation_length):
+                if tgt[i][j] == self.eos:
+                    tgt[i][j:] = self.pad
+                    break
+
+        return tgt
+
+    def __call__(
+        self, decoder_input_ids=None, encoder_hidden_states=None, encoder_input_mask=None, return_beam_scores=False
+    ):
+        with self.as_frozen():
+            return self._forward(
+                decoder_input_ids, encoder_hidden_states, encoder_input_mask, return_beam_scores=return_beam_scores
+            )
+
+    def freeze(self) -> None:
+        """Freeze weights of embedding, decoder, and classification layers to prevent memory leak.
+        """
+        for param in self.embedding.parameters():
+            param.requires_grad = False
+        self.embedding.eval()
+        for param in self.decoder.parameters():
+            param.requires_grad = False
+        self.decoder.eval()
+        for param in self.log_softmax.parameters():
+            param.require_grad = False
+        self.log_softmax.eval()
+
+    def unfreeze(self) -> None:
+        """Unfreeze weights of embedding, decoder, and classification layers.
+        """
+        for param in self.embedding.parameters():
+            param.requires_grad = True
+        self.embedding.train()
+        for param in self.decoder.parameters():
+            param.requires_grad = True
+        self.decoder.train()
+        for param in self.log_softmax.parameters():
+            param.require_grad = True
+        self.log_softmax.train()
+
+    @contextmanager
+    def as_frozen(self):
+        """
+        Context manager which temporarily freezes embedding, decoder, and log_softmax modules,
+        yields control and finally unfreezes the modules.
+        """
+        self.freeze()
+
+        try:
+            yield
+        finally:
+            self.unfreeze()
+
 
 
 class GreedySequenceGenerator:

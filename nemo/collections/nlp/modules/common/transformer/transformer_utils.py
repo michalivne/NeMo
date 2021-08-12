@@ -21,7 +21,7 @@ from nemo.collections.nlp.modules.common.encoder_module import EncoderModule
 from nemo.collections.nlp.modules.common.huggingface.huggingface_decoder import HuggingFaceDecoderModule
 from nemo.collections.nlp.modules.common.huggingface.huggingface_encoder import HuggingFaceEncoderModule
 from nemo.collections.nlp.modules.common.megatron.megatron_encoder import MegatronEncoderModule
-from nemo.collections.nlp.modules.common.transformer.transformer import TransformerDecoderNM, TransformerEncoderNM
+from nemo.collections.nlp.modules.common.transformer.transformer import PerceiverDecoderNM, TransformerDecoderNM, TransformerEncoderNM
 from nemo.collections.nlp.modules.common.transformer.transformer_bottleneck import TransformerBottleneckEncoderNM
 
 
@@ -87,6 +87,7 @@ def get_nemo_transformer(
                 pre_ln=cfg.get('pre_ln', False),
                 pre_ln_final_layer_norm=pre_ln_final_layer_norm,
                 num_token_types=cfg.get('num_token_types', 2),
+                hidden_steps=cfg.get('hidden_steps', 10)
             )
         elif arch in ["seq2seq", "bridge", "perceiver"]:
             model = TransformerBottleneckEncoderNM(
@@ -115,6 +116,7 @@ def get_nemo_transformer(
         else:
             raise ValueError(f"Unknown arch = {arch}")
     else:
+        # model = PerceiverDecoderNM(
         model = TransformerDecoderNM(
             vocab_size=cfg.get('vocab_size'),
             hidden_size=cfg.get('hidden_size'),
@@ -131,6 +133,7 @@ def get_nemo_transformer(
             pre_ln=cfg.get('pre_ln', False),
             pre_ln_final_layer_norm=pre_ln_final_layer_norm,
             num_token_types=cfg.get('num_token_types', 2),
+            diagonal=cfg.get('diagonal', 0),
         )
 
     return model

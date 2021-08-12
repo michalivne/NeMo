@@ -18,6 +18,8 @@ from nemo.collections.nlp.modules.common.transformer.transformer_decoders import
 from nemo.collections.nlp.modules.common.transformer.transformer_encoders import TransformerEncoder
 from nemo.collections.nlp.modules.common.transformer.transformer_modules import AttentionBridge
 
+from nemo.utils import logging
+
 __all__ = ["PerceiverEncoder"]
 
 
@@ -35,9 +37,9 @@ class PerceiverEncoder(TransformerEncoder):
         hidden_act: str = "relu",
         pre_ln: bool = False,
         pre_ln_final_layer_norm: bool = True,
-        hidden_steps: int = 32,
+        hidden_steps: int = 10,
         hidden_init_method: str = "default",
-        hidden_blocks: int = 2,
+        **kwargs
     ):
         super().__init__(
             num_layers=num_layers,
@@ -55,7 +57,6 @@ class PerceiverEncoder(TransformerEncoder):
 
         self._hidden_steps = hidden_steps
         self._hidden_init_method = hidden_init_method
-        self._hidden_blocks = hidden_blocks
 
         if self._hidden_init_method == "default":
             self._hidden_init_method = "params"
@@ -107,9 +108,15 @@ class PerceiverEncoder(TransformerEncoder):
     def forward(self, encoder_states, encoder_mask):
         """
         Args:
-            encoder_states: output of the encoder (B x L_enc x H)
-            encoder_mask: encoder inputs mask (B x L_enc)
+            encoder_states: Input of shape (B x L_enc x H)
+            encoder_mask: Corresponding mask of shape (B x L_enc)
+
+        Return:
+            hidden_states: Shape (B x hidden_steps x H)
+            hidden_mask: (B x hidden_steps)
         """
+        # logging.info("encoder_states: {}, encoder_mask: {}".format(encoder_states.shape, encoder_mask.shape))
+
         # all hidden values are active
         hidden_mask = torch.ones(
             encoder_states.shape[0], self._hidden_steps, dtype=encoder_mask.dtype, device=encoder_mask.device
@@ -121,10 +128,14 @@ class PerceiverEncoder(TransformerEncoder):
             hidden_states = self.init_hidden.unsqueeze(0).expand(encoder_states.shape[0], -1, -1)
         elif self._hidden_init_method == "bridge":
             # initialize latent with attention bridge
-            hidden_states = self.att_bridge(hidden=encoder_states, hidden_mask=encoder_mask,)
+            hidden_states = self.att_bridge(hidden=encoder_states, hidden_mask=encoder_mask)
+
+        residual = hidden_states
+
+        # logging.info("1: {}".format(hidden_states.shape))
 
         # apply block (cross-attention, self-attention) multiple times
-        for block in range(self._hidden_blocks):
+        for block in range(1):
             # cross attention of hidden over encoder states
             hidden_states = self.cross_att(
                 decoder_states=hidden_states,
@@ -132,8 +143,18 @@ class PerceiverEncoder(TransformerEncoder):
                 encoder_states=encoder_states,
                 encoder_mask=encoder_mask,
             )
+            hidden_states += residual
+            residual = hidden_states
+            # logging.info("2: {}".format(hidden_states.shape))
 
             # self-attention over hidden
-            hidden_states = super().forward(encoder_states=hidden_states, encoder_mask=hidden_mask,)
-
+            hidden_states = super().forward(encoder_states=hidden_states, encoder_mask=hidden_mask)
+            hidden_states += residual
+            residual = hidden_states 
+            # logging.info("3: {}".format(hidden_states.shape))
+        
         return hidden_states, hidden_mask
+
+        # hidden_states = super().forward(encoder_states=encoder_states, encoder_mask=encoder_mask)
+        # logging.info("hidden_states: {}".format(hidden_states.shape))
+        # return hidden_states, encoder_mask

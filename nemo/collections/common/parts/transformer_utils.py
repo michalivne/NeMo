@@ -32,6 +32,7 @@ def form_attention_mask(input_mask, diagonal=None):
             None -- do not mask anything
             0 -- regular translation or language modeling future masking
             1 -- query stream masking as in XLNet architecture
+            2 -- non-autoregressive masking
     Returns:
         attention_mask: mask of size B x 1 x L x L with 0s corresponding to
             tokens we plan to attend to and -10000 otherwise
@@ -41,7 +42,12 @@ def form_attention_mask(input_mask, diagonal=None):
         return None
     attn_shape = (1, input_mask.shape[1], input_mask.shape[1])
     attn_mask = input_mask.to(dtype=bool).unsqueeze(1)
-    if diagonal is not None:
+
+    if diagonal == 2:
+        future_mask = torch.eye(attn_shape[1], dtype=torch.bool, device=input_mask.device)
+        future_mask = torch.unsqueeze(future_mask, 0)
+        attn_mask = attn_mask & future_mask
+    elif diagonal is not None:
         future_mask = torch.tril(torch.ones(attn_shape, dtype=torch.bool, device=input_mask.device), diagonal)
         attn_mask = attn_mask & future_mask
     attention_mask = (1 - attn_mask.to(torch.float)) * NEG_INF

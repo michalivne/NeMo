@@ -25,6 +25,7 @@ from torch.nn.functional import gelu
 
 from nemo.collections.common.parts import form_attention_mask
 
+
 __all__ = ["TransformerEmbedding", "AttentionBridge"]
 
 

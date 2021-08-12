@@ -43,7 +43,7 @@ from nemo.collections.nlp.models.machine_translation.mt_enc_dec_config import MT
 from nemo.collections.nlp.modules.common import TokenClassifier
 from nemo.collections.nlp.modules.common.lm_utils import get_transformer
 from nemo.collections.nlp.modules.common.tokenizer_utils import get_nmt_tokenizer
-from nemo.collections.nlp.modules.common.transformer import BeamSearchSequenceGenerator, TopKSequenceGenerator
+from nemo.collections.nlp.modules.common.transformer import ArgmaxGenerator, BeamSearchSequenceGenerator, TopKSequenceGenerator
 from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.utils import logging, model_utils
 
@@ -167,7 +167,7 @@ class MTEncDecModel(EncDecNLPModel):
 
         self.log_softmax = TokenClassifier(
             hidden_size=self.decoder.hidden_size,
-            num_classes=self.decoder_vocab_size,
+            num_classes=self.encoder_vocab_size,
             activation=cfg.head.activation,
             log_softmax=cfg.head.log_softmax,
             dropout=cfg.head.dropout,
@@ -213,10 +213,16 @@ class MTEncDecModel(EncDecNLPModel):
 
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
-        src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
+        src_hiddens, src_mask = self.encoder(input_ids=src, encoder_mask=src_mask)
+
+        # tgt = torch.arange(
+        #     start=0, end=tgt.shape[1], dtype=torch.long, device=tgt.device
+        # )
+        # tgt = tgt.unsqueeze(0)
         tgt_hiddens = self.decoder(
             input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
         )
+        # logging.info("tgt={} tgt_hiddens={}".format(tgt.shape, tgt_hiddens.shape))
         log_probs = self.log_softmax(hidden_states=tgt_hiddens)
         return log_probs
 
@@ -701,7 +707,7 @@ class MTEncDecModel(EncDecNLPModel):
         mode = self.training
         try:
             self.eval()
-            src_hiddens = self.encoder(input_ids=src, encoder_mask=src_mask)
+            src_hiddens, src_mask = self.encoder(input_ids=src, encoder_mask=src_mask)
             best_translations = self.beam_search(
                 encoder_hidden_states=src_hiddens, encoder_input_mask=src_mask, return_beam_scores=return_beam_scores
             )
@@ -711,7 +717,6 @@ class MTEncDecModel(EncDecNLPModel):
                 all_translations = self.ids_to_postprocessed_text(
                     all_translations, self.decoder_tokenizer, self.target_processor, filter_beam_ids=True
                 )
-
             best_translations = self.ids_to_postprocessed_text(
                 best_translations, self.decoder_tokenizer, self.target_processor, filter_beam_ids=True
             )
