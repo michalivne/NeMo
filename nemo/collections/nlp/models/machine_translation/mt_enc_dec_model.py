@@ -214,11 +214,6 @@ class MTEncDecModel(EncDecNLPModel):
     @typecheck()
     def forward(self, src, src_mask, tgt, tgt_mask):
         src_hiddens, src_mask = self.encoder(input_ids=src, encoder_mask=src_mask)
-
-        tgt = torch.arange(
-            start=0, end=tgt.shape[1], dtype=torch.long, device=tgt.device
-        )
-        tgt = tgt.unsqueeze(0)
         tgt_hiddens = self.decoder(
             input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
         )
@@ -238,7 +233,13 @@ class MTEncDecModel(EncDecNLPModel):
                 # is excess.
                 batch[i] = batch[i].squeeze(dim=0)
         src_ids, src_mask, tgt_ids, tgt_mask, labels = batch
-        log_probs = self(src_ids, src_mask, tgt_ids, tgt_mask)
+        
+        tgt = torch.arange(
+            start=0, end=tgt_ids.shape[1], dtype=torch.long, device=tgt_ids.device
+        )
+        tgt = tgt.unsqueeze(0)
+
+        log_probs = self(src_ids, src_mask, tgt, tgt_mask)
         train_loss = self.loss_fn(log_probs=log_probs, labels=labels)
         tensorboard_logs = {
             'train_loss': train_loss,
@@ -258,7 +259,11 @@ class MTEncDecModel(EncDecNLPModel):
             self.target_processor = self.target_processor_list[dataloader_idx]
 
         src_ids, src_mask, tgt_ids, tgt_mask, labels = batch
-        log_probs = self(src_ids, src_mask, tgt_ids, tgt_mask)
+        tgt = torch.arange(
+            start=0, end=tgt_ids.shape[1], dtype=torch.long, device=tgt_ids.device
+        )
+        tgt = tgt.unsqueeze(0)
+        log_probs = self(src_ids, src_mask, tgt, tgt_mask)
         eval_loss = self.eval_loss_fn(log_probs=log_probs, labels=labels)
         # this will run encoder twice -- TODO: potentially fix
         _, translations = self.batch_translate(src=src_ids, src_mask=src_mask)
