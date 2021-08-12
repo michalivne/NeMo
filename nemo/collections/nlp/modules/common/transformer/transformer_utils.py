@@ -116,8 +116,7 @@ def get_nemo_transformer(
         else:
             raise ValueError(f"Unknown arch = {arch}")
     else:
-        # model = PerceiverDecoderNM(
-        model = TransformerDecoderNM(
+        model = PerceiverDecoderNM(
             vocab_size=cfg.get('vocab_size'),
             hidden_size=cfg.get('hidden_size'),
             num_layers=cfg.get('num_layers'),
@@ -133,7 +132,7 @@ def get_nemo_transformer(
             pre_ln=cfg.get('pre_ln', False),
             pre_ln_final_layer_norm=pre_ln_final_layer_norm,
             num_token_types=cfg.get('num_token_types', 2),
-            diagonal=cfg.get('diagonal', 0),
+            diagonal=2,
         )
 
     return model

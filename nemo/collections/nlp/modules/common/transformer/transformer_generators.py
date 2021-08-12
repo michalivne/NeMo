@@ -107,18 +107,15 @@ class ArgmaxGenerator:
         log_probs = self.log_softmax.forward(hidden_states=decoder_mems_list[-1])
         tgt = torch.argmax(log_probs, dim=-1)
     
-        # next_tokens = self.pad * pad_profile + next_tokens * (1 - pad_profile)
-        # pad_profile = torch.max(pad_profile, (next_tokens == self.eos).long())
-        # tgt = torch.cat((tgt, next_tokens), dim=-1)
-
         # print("encoder_hidden_states={}, encoder_input_mask={}, decoder_hidden_states={}, old_tgt={}, log_probs={}, tgt={}".format(
         #     encoder_hidden_states.shape, encoder_input_mask.shape, decoder_hidden_states.shape, old_tgt.shape, log_probs.shape, tgt.shape
         # ))
 
-        for i in range(batch_size):
-            for j in range(max_generation_length):
+        # If an eos is detected, mark all the following tokens as padding.
+        for i in range(tgt.shape[0]):
+            for j in range(tgt.shape[1] - 1):
                 if tgt[i][j] == self.eos:
-                    tgt[i][j:] = self.pad
+                    tgt[i][j+1:] = self.pad
                     break
 
         return tgt

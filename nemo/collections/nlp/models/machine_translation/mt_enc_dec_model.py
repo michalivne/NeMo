@@ -174,7 +174,7 @@ class MTEncDecModel(EncDecNLPModel):
             use_transformer_init=cfg.head.use_transformer_init,
         )
 
-        self.beam_search = BeamSearchSequenceGenerator(
+        self.beam_search = ArgmaxGenerator(
             embedding=self.decoder.embedding,
             decoder=self.decoder.decoder,
             log_softmax=self.log_softmax,
@@ -188,7 +188,7 @@ class MTEncDecModel(EncDecNLPModel):
         )
 
         # tie weights of embedding and softmax matrices
-        self.log_softmax.mlp.layer0.weight = self.decoder.embedding.token_embedding.weight
+        # self.log_softmax.mlp.layer0.weight = self.decoder.embedding.token_embedding.weight
 
         # TODO: encoder and decoder with different hidden size?
         std_init_range = 1 / self.encoder.hidden_size ** 0.5
@@ -215,10 +215,10 @@ class MTEncDecModel(EncDecNLPModel):
     def forward(self, src, src_mask, tgt, tgt_mask):
         src_hiddens, src_mask = self.encoder(input_ids=src, encoder_mask=src_mask)
 
-        # tgt = torch.arange(
-        #     start=0, end=tgt.shape[1], dtype=torch.long, device=tgt.device
-        # )
-        # tgt = tgt.unsqueeze(0)
+        tgt = torch.arange(
+            start=0, end=tgt.shape[1], dtype=torch.long, device=tgt.device
+        )
+        tgt = tgt.unsqueeze(0)
         tgt_hiddens = self.decoder(
             input_ids=tgt, decoder_mask=tgt_mask, encoder_embeddings=src_hiddens, encoder_mask=src_mask
         )
@@ -580,6 +580,7 @@ class MTEncDecModel(EncDecNLPModel):
         )
 
     def replace_beam_with_sampling(self, topk=500):
+        return
         self.beam_search = TopKSequenceGenerator(
             embedding=self.decoder.embedding,
             decoder=self.decoder.decoder,
