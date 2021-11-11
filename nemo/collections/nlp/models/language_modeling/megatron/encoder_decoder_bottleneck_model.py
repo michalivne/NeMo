@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""T5 model."""
+"""Encoder-decoder with bottleneck support base model."""
 
 import torch
 from apex.transformer import tensor_parallel
