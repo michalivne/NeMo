@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Encoder-decoder with bottleneck support base model."""
+"""Base encoder-decoder model with bottleneck support."""
+
+# TODO: add
+
 
 import torch
 from apex.transformer import tensor_parallel
@@ -23,12 +26,7 @@ from nemo.collections.nlp.modules.common.megatron.module import MegatronModule
 from nemo.collections.nlp.modules.common.megatron.utils import init_method_normal, scaled_init_method_normal
 
 
-def t5_attention_mask_func(attention_scores, attention_mask):
-    attention_scores.masked_fill_(attention_mask, -10000)
-    return attention_scores
-
-
-def t5_extended_attention_mask(attention_mask_list):
+def extended_attention_mask(attention_mask_list):
     def attn_mask_postprocess(attn_mask):
         # [b, 1, s, s]
         # Attn_masks for enc-dec attn and dec attn is None when trying to get just the encoder hidden states.
@@ -40,7 +38,7 @@ def t5_extended_attention_mask(attention_mask_list):
     return [attn_mask_postprocess(attn_mask) for attn_mask in attention_mask_list]
 
 
-def t5_position_ids(token_ids):
+def build_position_ids(token_ids):
     # Create position ids
     seq_length = token_ids.size(1)
     position_ids = torch.arange(seq_length, dtype=torch.long, device=token_ids.device)
@@ -49,8 +47,8 @@ def t5_position_ids(token_ids):
     return position_ids
 
 
-class T5LMHead(MegatronModule):
-    """Masked LM head for T5
+class EncDecLMHead(MegatronModule):
+    """Masked LM head for encoder-decoder model
 
     Arguments:
         mpu_vocab_size: model parallel size of vocabulary.
@@ -61,7 +59,7 @@ class T5LMHead(MegatronModule):
     """
 
     def __init__(self, mpu_vocab_size, parallel_output):
-        super(T5LMHead, self).__init__()
+        super(EncDecLMHead, self).__init__()
 
         self.bias = torch.nn.Parameter(torch.zeros(mpu_vocab_size))
         self.bias.model_parallel = True
@@ -74,8 +72,8 @@ class T5LMHead(MegatronModule):
         return output
 
 
-class T5Model(MegatronModule):
-    """T5 Language model."""
+class EncDecBottleneckModel(MegatronModule):
+    """encoder-decoder language model with bottleneck support."""
 
     def __init__(
         self,
@@ -105,7 +103,7 @@ class T5Model(MegatronModule):
         openai_gelu=False,
         onnx_safe=False,
     ):
-        super(T5Model, self).__init__()
+        super(EncDecBottleneckModel, self).__init__()
 
         self.parallel_output = parallel_output
         self.pre_process = pre_process
@@ -152,7 +150,7 @@ class T5Model(MegatronModule):
             onnx_safe=onnx_safe,
         )
 
-        self.lm_head = T5LMHead(self.language_model.embedding.word_embeddings.weight.size(0), parallel_output)
+        self.lm_head = EncDecLMHead(self.language_model.embedding.word_embeddings.weight.size(0), parallel_output)
         self._lm_head_key = 'lm_head'
 
     def set_input_tensor(self, input_tensor):
@@ -173,14 +171,14 @@ class T5Model(MegatronModule):
     ):
 
         # Converting the attention masks to proper parameter settings
-        encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask = t5_extended_attention_mask(
+        encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask = extended_attention_mask(
             [encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask]
         )
 
-        encoder_position_ids = t5_position_ids(encoder_input_ids)
+        encoder_position_ids = build_position_ids(encoder_input_ids)
 
         # Handle case when decoder_input_ids is None to get just the encoder hidden states.
-        decoder_position_ids = t5_position_ids(decoder_input_ids) if decoder_input_ids is not None else None
+        decoder_position_ids = build_position_ids(decoder_input_ids) if decoder_input_ids is not None else None
 
         lm_output = self.language_model(
             encoder_input_ids,
@@ -206,12 +204,19 @@ class T5Model(MegatronModule):
         if lm_labels is None:
             return lm_logits, encoder_output
         else:
-            if self.fp16_lm_cross_entropy:
-                assert lm_logits.dtype == torch.half
-                lm_loss = tensor_parallel.vocab_parallel_cross_entropy(lm_logits, lm_labels)
-            else:
-                lm_loss = tensor_parallel.vocab_parallel_cross_entropy(lm_logits.float(), lm_labels)
+            lm_loss = self.lm_cross_entropy(lm_logits, lm_labels)
+
             return lm_loss, encoder_output
+
+    def lm_cross_entropy(self, lm_logits, lm_labels):
+        """An auxiliary method to correctly compute model parallel LM cross entropy"""
+        if self.fp16_lm_cross_entropy:
+            assert lm_logits.dtype == torch.half
+            lm_loss = tensor_parallel.vocab_parallel_cross_entropy(lm_logits, lm_labels)
+        else:
+            lm_loss = tensor_parallel.vocab_parallel_cross_entropy(lm_logits.float(), lm_labels)
+
+        return lm_loss
 
     def state_dict_for_save_checkpoint(self, destination=None, prefix='', keep_vars=False):
         """For easy load when model is combined with other heads,
