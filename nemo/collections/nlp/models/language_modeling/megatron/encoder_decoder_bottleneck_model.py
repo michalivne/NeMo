@@ -14,14 +14,15 @@
 
 """Base encoder-decoder model with bottleneck support."""
 
-# TODO: add
+# TODO: add separated tokenizer for encoder and decoder
+# TODO: add support in bottleneck in encoder output
 
 
 import torch
 from apex.transformer import tensor_parallel
 from apex.transformer.enums import AttnMaskType
 
-from nemo.collections.nlp.modules.common.megatron.language_model import get_language_model, parallel_lm_logits
+from nemo.collections.nlp.modules.common.megatron.encoder_decoder_bottleneck_model import get_bottleneck_model, parallel_lm_logits
 from nemo.collections.nlp.modules.common.megatron.module import MegatronModule
 from nemo.collections.nlp.modules.common.megatron.utils import init_method_normal, scaled_init_method_normal
 
@@ -118,7 +119,7 @@ class EncDecBottleneckModel(MegatronModule):
             ), 'hidden_size must be divisible by num_attention_heads if kv_channels is None'
             kv_channels = hidden_size // num_attention_heads
 
-        self.language_model, self._language_model_key = get_language_model(
+        self.language_model, self._language_model_key = get_bottleneck_model(
             vocab_size=vocab_size,
             hidden_size=hidden_size,
             hidden_dropout=hidden_dropout,

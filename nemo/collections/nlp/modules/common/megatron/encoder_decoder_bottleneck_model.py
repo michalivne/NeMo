@@ -83,7 +83,7 @@ def get_bottleneck_model(
         scaled_init_method = scaled_init_method_normal(init_method_std, num_layers)
 
     # Language model.
-    language_model = TransformerLanguageModel(
+    language_model = TransformerEncoderDecoderModel(
         init_method=init_method,
         output_layer_init_method=scaled_init_method,
         encoder_attn_mask_type=encoder_attn_mask_type,
@@ -119,8 +119,8 @@ def get_bottleneck_model(
     return language_model, language_model_key
 
 
-class TransformerLanguageModel(MegatronModule):
-    """Transformer language model.
+class TransformerEncoderDecoderModel(MegatronModule):
+    """Transformer encoder decoder model with bottleneck support.
 
     Arguments:
         transformer_hparams: transformer hyperparameters
