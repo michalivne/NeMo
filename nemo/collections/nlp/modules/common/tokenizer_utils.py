@@ -23,6 +23,7 @@ from nemo.collections.common.tokenizers.char_tokenizer import CharTokenizer
 from nemo.collections.common.tokenizers.huggingface.auto_tokenizer import AutoTokenizer
 from nemo.collections.common.tokenizers.word_tokenizer import WordTokenizer
 from nemo.collections.common.tokenizers.youtokentome_tokenizer import YouTokenToMeTokenizer
+from nemo.collections.common.tokenizers.regexp_tokenizer import RegExTokenizer
 from nemo.collections.nlp.modules.common.huggingface.huggingface_utils import get_huggingface_pretrained_lm_models_list
 from nemo.collections.nlp.modules.common.lm_utils import get_pretrained_lm_models_list
 from nemo.collections.nlp.parts.nlp_overrides import HAVE_APEX
@@ -186,6 +187,11 @@ def get_nmt_tokenizer(
             f'Getting Megatron tokenizer for pretrained model name: {model_name} and custom vocab file: {vocab_file}'
         )
         return get_tokenizer(tokenizer_name=model_name, vocab_file=vocab_file, merges_file=merges_file)
+    elif library == 'regexp':
+        logging.info(f'Getting RegExp tokenizer from file: {tokenizer_model} and custom vocab file: {vocab_file}')
+        regexp_str = open(tokenizer_model).read()
+        logging.info(f'RegExp: {regexp_str}')
+        return RegExTokenizer(vocab_file=vocab_file, regexp=regexp_str)
     else:
         raise NotImplementedError(
             'Currently we only support "yttm", "huggingface", "sentencepiece", "megatron", and "byte-level" tokenizer'
