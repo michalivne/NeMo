@@ -163,7 +163,7 @@ class TransformerEncoderDecoderModel(MegatronModule):
         openai_gelu=False,
         onnx_safe=False,
     ):
-        super(TransformerLanguageModel, self).__init__()
+        super(TransformerEncoderDecoderModel, self).__init__()
 
         self.pre_process = pre_process
         self.post_process = post_process
